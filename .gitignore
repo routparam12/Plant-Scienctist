@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+.idea
+
+Backend/.env
+Backend/.idea
+
+backend/.idea
+backend/.venv
+
+backend/node_modules

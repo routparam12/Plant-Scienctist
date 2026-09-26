@@ -1,0 +1,20 @@
+# API
+fastapi
+uvicorn[standard]
+
+# Validation / settings
+pydantic
+pydantic-settings
+
+# Database
+sqlalchemy
+asyncpg
+
+# Redis
+redis
+
+# JWT
+python-jose[cryptography]
+
+# Environment
+python-dotenv
