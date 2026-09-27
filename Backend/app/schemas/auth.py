@@ -12,3 +12,7 @@ class EmailOTPVerify(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class OAuthCallbackRequest(BaseModel):
+    auth_code: str

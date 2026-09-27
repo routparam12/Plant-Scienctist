@@ -23,5 +23,15 @@ class AuthService:
             refresh_token
         )
 
+    @staticmethod
+    def exchange_code_for_session(auth_code: str):
+        return supabase.auth.exchange_code_for_session({
+            "auth_code": auth_code,
+        })
+
+    @staticmethod
+    def sign_out(access_token: str):
+        return supabase.auth.sign_out(access_token)
+
 
 auth_service = AuthService()

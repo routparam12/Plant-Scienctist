@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.me import router as me_router
 
 
 app = FastAPI(
@@ -11,6 +12,11 @@ app = FastAPI(
 
 app.include_router(
     auth_router,
+    prefix="/v1",
+)
+
+app.include_router(
+    me_router,
     prefix="/v1",
 )
 
