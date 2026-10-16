@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     supabase_publishable_key: str
     supabase_secret_key: str
     supabase_jwks_url: str
+    gemini_api_key: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

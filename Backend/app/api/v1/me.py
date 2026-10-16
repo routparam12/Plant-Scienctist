@@ -57,12 +57,18 @@ async def complete_onboarding(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Explicitly marks farmer onboarding as completed (onboarding_completed = true).
+    Explicitly marks farmer onboarding as completed (onboarding_completed = true)
+    after validating all required fields (full_name, preferred_language, state, district).
     """
     user_id = current_user.get("sub")
     try:
         updated_profile = profile_service.complete_onboarding(user_id)
         return updated_profile
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

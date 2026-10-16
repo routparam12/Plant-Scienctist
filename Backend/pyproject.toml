@@ -1,17 +1,21 @@
 [project]
 name = "plant-scienctist"
 version = "0.1.0"
-description = "Add your description here"
+description = "Plant Scientist Backend API"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 dependencies = [
-    "asyncpg>=0.31.0",
-    "fastapi>=0.141.1",
-    "pydantic>=2.13.5",
-    "pydantic-settings>=2.15.0",
-    "python-dotenv>=1.2.3",
-    "python-jose[cryptography]>=3.5.0",
-    "redis>=8.1.0",
-    "sqlalchemy>=2.1.0",
-    "uvicorn[standard]>=0.53.0",
+    "asyncpg>=0.30.0",
+    "fastapi>=0.110.0",
+    "faster-whisper>=1.2.1",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "PyJWT[crypto]>=2.9.0",
+    "python-dotenv>=1.0.0",
+    "redis>=5.0.0",
+    "sarvamai>=0.1.37",
+    "speechrecognition>=3.17.0",
+    "sqlalchemy>=2.0.0",
+    "supabase>=2.10.0",
+    "uvicorn[standard]>=0.29.0",
 ]

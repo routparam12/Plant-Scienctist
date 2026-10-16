@@ -31,7 +31,7 @@ class AuthService:
 
     @staticmethod
     def sign_out(access_token: str):
-        return supabase.auth.sign_out(access_token)
+        return supabase.auth.admin.sign_out(access_token)
 
 
 auth_service = AuthService()

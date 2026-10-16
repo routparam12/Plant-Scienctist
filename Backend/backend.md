@@ -21,8 +21,8 @@
                            │                    │               │
                            ▼                    ▼               ▼
                     Supabase Postgres       Redis          AI Providers
-                    🗄️ Application data     ⚙️ ARQ          │
-                    🔎 pgvector             workers          ├─ STT
+                    🗄️ Application data     ⚙️ ARQ         │
+                    🔎 pgvector             workers        ├─ STT
                                                             ├─ LLM
                                                             ├─ TTS
                                                             └─ Classifier

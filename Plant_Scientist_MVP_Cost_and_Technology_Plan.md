@@ -15,17 +15,17 @@ The initial objective is **not** to build a large production infrastructure. The
 
 ### Recommended initial stack
 
-- **Mobile:** Flutter
+- **Mobile:** React Native (Expo + TypeScript) *(Migrated from Flutter)*
 - **Web/SEO:** Next.js
-- **Backend:** FastAPI
-- **Database:** PostgreSQL
+- **Backend:** FastAPI (Python 3.11+)
+- **Database:** PostgreSQL (Supabase / Managed PostgreSQL)
 - **Queue:** Redis + Celery/ARQ/RQ
-- **Object storage:** S3-compatible storage
-- **Knowledge base:** Local vector DB initially, managed vector storage later if required
-- **AI:** Provider abstraction for STT, TTS, vision and LLM
-- **Authentication:** Phone OTP
-- **Voice:** Push-to-talk for MVP
-- **Deployment:** Start locally, then move to low-cost cloud hosting
+- **Object storage:** Supabase Storage / S3-compatible private storage with signed URLs
+- **Knowledge base:** ICAR pathology database + vector search
+- **AI:** Provider abstraction for STT, TTS, vision and LLM (Gemini 2.5 Flash / Edge TTS)
+- **Authentication:** Passwordless Email/Phone OTP
+- **Voice:** Push-to-talk multilingual assistant (Hindi, Marathi, English)
+- **Deployment:** Start locally with adaptive endpoint discovery, move to low-cost cloud hosting
 - **Future channel:** WhatsApp using the same backend
 
 ---
@@ -984,37 +984,107 @@ The architecture should therefore make expensive services **replaceable**, while
 
 ---
 
-## Next Decision
+## Final Framework Decision
 
-Before implementation, decide the mobile framework:
+### Selected: React Native (Expo + TypeScript)
 
-### Option A — Flutter
+The team evaluated Flutter vs. React Native and finalized **React Native (Expo SDK 54, React Native 0.76+) with TypeScript**:
 
-Best fit if the priority is:
-
-- Custom UI
-- Animations
-- Glass cards
-- Voice UI
-- Waveforms
-- Camera interactions
-- Android now + iOS later
-
-### Option B — React Native
-
-Best fit if the team already has strong:
-
-- JavaScript
-- TypeScript
-- React
-- React Native
-
-### Recommended choice
-
-**Flutter**, unless the existing team is significantly stronger in TypeScript/React Native.
+- **Rationale:** Rapid iteration cycles, strong ecosystem for custom UI styling, modular component architecture, active device debugging via Expo Go / development builds, and seamless sharing of TypeScript data types between web and mobile interfaces.
+- **Iconography & Styling:** Lucide Icons (`lucide-react-native`) and curated modern tokens in `THEME` (no rigid utility overhead).
+- **Media & Hardware:** Expo Camera and Expo ImagePicker with direct multipart upload to FastAPI.
 
 ---
 
 ## One-line architecture decision
 
-> **Flutter + FastAPI + PostgreSQL + Redis + Object Storage + provider-abstracted AI, starting with mock AI and moving to paid APIs only after the core UX is validated.**
+> **React Native (Expo) + FastAPI + PostgreSQL (Supabase) + Redis + Private Object Storage + Provider-Abstracted AI (Gemini 2.5 Flash / Edge TTS), with strict farmer-first, user-centric data models.**
+
+---
+
+# 11. Migration & Implementation Progress Log (Up Until Now)
+
+### 11.1 Mobile Stack Migration (Flutter ➔ React Native)
+- **Status:** **Completed**
+- **Changes Executed:**
+  - Deprecated legacy Flutter client codebase in `app/mobile_app/`.
+  - Built full cross-platform application in `mobile-app/` using Expo SDK 54, React Native 0.76+, and TypeScript.
+  - Implemented multi-lingual localization system in `src/constants/translations.ts` supporting **English (`en`)**, **Hindi (`hi`)**, and **Marathi (`mr`)**.
+  - Built custom component hierarchy: `CradleBottomNav`, `CropCard`, `CropDetailModal`, `DiagnosticScannerModal`, `VoiceAssistantModal`, `AddCropModal`, and `OnboardingLoginModal`.
+  - Configured Android physical device debugging via USB with `adb reverse tcp:8000 tcp:8000`, Android cleartext traffic (`android:usesCleartextTraffic="true"`), and multi-fallback adaptive network client.
+
+---
+
+### 11.2 Product & Domain Model Evolution (Farmer-Centric Architecture)
+- **Status:** **Completed**
+- **Problem with Initial Design:**
+  - Traditional agriculture apps force smallholder farmers to fill complex multi-step forms (farm name, village, survey number, exact GPS acreage, soil survey) before they can even ask a question or track a plant.
+  - Hardcoded growth stage percentages (e.g. "Flowering 40%") and artificial health scores (e.g. "95/100") created visual contradictions with real crop biology.
+- **Architectural Shift:**
+  - **Crops Belong Directly to the User:** Land/farm boundaries are completely optional and deferred. A farmer can track a plant even if they only have 2 backyard tomato plants.
+  - **Zero-Friction Crop Creation:** Crops are created from actions farmers already take:
+    1. **Leaf Scan:** AI diagnosis auto-detects crop identity and presents a 1-tap *"Add to My Crops"* button.
+    2. **Voice Query:** Farmer mentions their crop to the AI voice doctor, creating a tracked crop.
+    3. **Manual Quick Chips:** Intuitive timing chips (*Today, 1 week ago, 2 weeks ago, 1 month ago, Don't know*) rather than requiring calendar date math.
+  - **Pure Computed Growth Stages:** Dropped hardcoded database columns (`stage`, `stage_progress`, `health_score`, `status`). The backend dynamically computes current growth stage, days growing, cycle percentage, and days to harvest based on Indian Standard Time (IST) and crop catalog duration intervals. If planted date is missing, progress is honestly reported as `null` (*"Planted: not set"*).
+
+---
+
+### 11.3 Backend Engineering & Security Hardening
+- **Status:** **Completed**
+- **Key Enhancements in `Backend/`:**
+  - **Strict JWT Authentication:** Kept strict `audience="authenticated"` token validation against Supabase JWKS with asymmetric key caching. Rejecting insecure bypasses (`verify_aud=False`) to prevent forged tokens.
+  - **PostgreSQL Database Schema (`schema.sql`):**
+    - `crops` catalog with duration-aligned stages (`stages jsonb`) where stage sums strictly equal `growth_duration_days`. Added crop aliases (`aliases text[]`) for colloquial names (e.g. *Tamatar*, *Gehun*).
+    - `farm_crops` simplified to user-centric ownership (`user_id`, `custom_name`, `variety`, `planted_date`, `source`, `notes`).
+    - `farm_crop_tasks` with ISO timestamp due dates (`due_at`) and priority levels.
+    - `diagnoses` updated with `farm_crop_id`, `crop_suggestion`, and `resolved_at` resolution tracking.
+  - **Batch Querying & Zero N+1 Queries:** Rewrote `crop_service.py` to fetch user crops, tasks, and diagnoses in bulk batch queries with explicit `user_id` filtering on every operation to prevent data leaks across users (since server-side Supabase secret key bypasses Postgres RLS).
+  - **Fail-Fast Error Architecture:** Removed silent fake fallback farms/crops ("Chandaka Farm", fake 14.5 acres). DB failures return explicit HTTP 503 (`UpstreamError`) or 404 (`NotFound`), with resilient client handling.
+  - **Private Object Storage with Signed URLs:** Implemented `storage_service.py` using private Supabase bucket `crop-images`. Images are securely stored and delivered to client via short-lived signed URLs.
+  - **AI Diagnostics & Voice:** Integrated Google Gemini 2.5 Flash for multimodal leaf pathology with ICAR treatment guidelines, and Microsoft Edge TTS for natural multilingual audio advisory in Hindi, Marathi, and English.
+
+---
+
+### 11.4 Mobile Networking & Hardware Integration
+- **Status:** **Completed**
+- **Issues Resolved:**
+  - **`java.net.ConnectException` over LAN:** Solved physical Android device connectivity issues by developing an adaptive endpoint discovery mechanism in `apiClient.ts` that tries reverse-tethered `localhost:8000`, LAN IP (`192.168.1.36:8000`), and emulator loopback (`10.0.2.2:8000`).
+  - **Android Cleartext Policy:** Enabled cleartext traffic for local development in both `android/app/src/main/AndroidManifest.xml` and `app.json`.
+  - **PGRST205 Schema Cache Graceful Handling:** Prevented app crashes if the Supabase SQL migration has not yet been executed by handling PostgREST missing table errors safely in `profile_service.py`.
+
+---
+
+### 11.5 Detailed Implementation Progress Across Phases
+
+| Phase | Description | Key Modules / Components | Status |
+| :--- | :--- | :--- | :--- |
+| **Phase 0** | **Audit & Infrastructure** | Dependency cleanup, API client with adaptive endpoint discovery, multilingual translations (`en`, `hi`, `mr`). | **Completed** |
+| **Phase 1** | **Authentication & Onboarding** | Passwordless Email OTP request & verify (`/v1/auth/otp/request`, `/v1/auth/otp/verify`), `OnboardingLoginModal.tsx`, `authStorage.ts` session persistence. | **Completed** |
+| **Phase 2** | **User-Centric Data Model & Storage** | Refactored `schema.sql`, `crop_progress.py` (IST computed stages), `storage_service.py` (signed URLs), flat `/v1/crops` API endpoints. | **Completed** |
+| **Phase 3** | **Crop Detail Screen & Timeline** | `CropDetailModal.tsx`: Stage stepper timeline, care tasks with filters/checkboxes, diagnosis history with signed image previews, and "Mark Resolved / Mark Active" issue toggle (`resolveDiagnosis`). | **Completed** |
+| **Phase 4** | **App-to-API Screen Wiring & Scanner** | `Crop.tsx`: Connected to live `getUserCrops()`, zero-crops empty state, active portfolio carousel, ICAR pathology library. `HomeScreen.tsx`: Connected to user crops and detail modal. `DiagnosticScannerModal.tsx`: Crop attachment selection and 1-tap "Add to My Crops" card. `App.tsx`: Automatic screen refresh on crop creation. | **Completed** |
+| **Phase 5** | **Offline Sync & SQLite Queue** | Local SQLite offline cache for tasks and offline diagnosis queue. | *Scheduled Next* |
+| **Phase 6** | **Voice Module Live Integration** | Streaming microphone audio with voice response playback. | *Scheduled Next* |
+| **Phase 7** | **Production Cloud Deployment** | Docker deployment on low-cost cloud runner with Redis. | *Scheduled Next* |
+
+---
+
+### 11.5b Onboarding & Routing Architectural Blueprint
+- **Status:** **Completed**
+- **Architecture Flow:**
+  1. **Supabase (Auth Only):** Handles OTP generation and email dispatch. Creates the Supabase auth user record on verification.
+  2. **FastAPI (`POST /v1/auth/otp/verify`):** Verifies OTP with Supabase, queries the `public.profiles` table for `user.id`, and returns an explicit `is_new_user: boolean` flag (`true` if profile row does not exist or lacks core details/onboarding_completed).
+  3. **Frontend Routing:**
+     - `OnboardingLoginModal.tsx` passes `(user, is_new_user)` to `onLoginSuccess`.
+     - In `App.tsx`, if `is_new_user === true`, it triggers the lightweight bottom sheet `QuickSetupModal.tsx` (*"What should we call you? What do you grow?"*).
+     - Farmers can enter their name, location, and tap crop chips (Tomato, Wheat, etc.) which auto-creates user crops, or tap **"Skip for now"** for zero-friction immediate access to `HomeScreen.tsx`.
+     - If `is_new_user === false`, the app skips setup and routes straight to `HomeScreen.tsx`.
+
+---
+
+### 11.6 Quality Assurance & Verification Status
+- **Mobile TypeScript Verification:** `npx tsc --noEmit` runs with **0 errors**.
+- **Backend Unit Testing:** `test_crop_progress.py` and `test_crops_api.py` run with **100% pass rate**.
+- **Supabase Integration:** Migration script prepared in [Backend/supabase/schema.sql](file:///d:/ML/Plant-Scienctist/Backend/supabase/schema.sql) ready for 1-click execution in Supabase SQL Editor.
+

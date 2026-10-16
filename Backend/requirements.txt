@@ -1,20 +1,37 @@
 # API
 fastapi
 uvicorn[standard]
+python-multipart
 
 # Validation / settings
 pydantic
 pydantic-settings
+email-validator
+
 
 # Database
 sqlalchemy
 asyncpg
 
+# Supabase
+supabase
+
 # Redis
 redis
 
 # JWT
-python-jose[cryptography]
+PyJWT[crypto]
 
 # Environment
 python-dotenv
+
+# Voice / STT & TTS
+faster-whisper
+edge-tts
+gTTS
+speechrecognition
+sarvamai
+
+# AI & LLM
+google-genai
+httpx

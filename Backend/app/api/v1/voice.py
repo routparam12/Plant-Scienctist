@@ -1,17 +1,17 @@
 import io
 import urllib.parse
 from typing import Optional
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.voice_module.stt import default_stt
-from app.voice_module.tts import text_to_speech, detect_language
+from app.voice_module.tts import async_text_to_speech, detect_language
 from app.voice_module.plant_advisor import get_plant_diagnosis
 
 router = APIRouter(
     prefix="/voice",
-    tags=["Voice"]
+    tags=["Voice Assistant"],
 )
 
 
@@ -25,7 +25,7 @@ async def transcribe_audio_endpoint(
     audio_file: UploadFile = File(...)
 ):
     """
-    Receives audio recorded on mobile/web frontend and transcribes it,
+    Receives audio recorded on mobile frontend and transcribes it,
     auto-detecting the spoken language (Hindi 'hi' or English 'en').
     """
     try:
@@ -51,14 +51,14 @@ async def transcribe_audio_endpoint(
 @router.post("/tts")
 async def generate_speech_endpoint(request: TTSRequest):
     """
-    Converts text to an in-memory MP3 audio stream for direct playback
-    on the mobile/web frontend.
+    Converts text to an in-memory MP3 audio stream for direct playback on mobile devices.
+    Uses non-blocking async TTS synthesis.
     """
     try:
-        audio_bytes = text_to_speech(
+        audio_bytes = await async_text_to_speech(
             text=request.text,
             language=request.language,
-            output_file=None,  # returns bytes directly
+            output_file=None,
         )
 
         return StreamingResponse(
@@ -83,9 +83,9 @@ async def plant_voice_query_endpoint(
 ):
     """
     Clean End-to-End Voice Architecture:
-    1. Receives audio captured on mobile / web frontend.
+    1. Receives audio captured on mobile (WAV/M4A/MP3/WEBM).
     2. Transcribes speech and auto-detects language ('hi' or 'en').
-    3. Generates the plant diagnosis response.
+    3. Generates the agronomic plant diagnosis advice.
     4. Returns either:
        - JSON response (transcription + plant diagnosis text) if return_audio=False
        - Live MP3 streaming audio response if return_audio=True
@@ -106,13 +106,13 @@ async def plant_voice_query_endpoint(
 
         # 3. Return Audio Stream
         if return_audio:
-            tts_bytes = text_to_speech(
+            tts_bytes = await async_text_to_speech(
                 text=plant_response,
                 language=lang,
                 output_file=None,
             )
 
-            # URL-encode headers to safely convey metadata with streaming response
+            # URL-encode headers to safely convey UTF-8 metadata (e.g. Hindi Devanagari)
             encoded_query = urllib.parse.quote(transcribed_text)
             encoded_response = urllib.parse.quote(plant_response)
 

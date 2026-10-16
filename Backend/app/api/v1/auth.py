@@ -9,6 +9,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
 )
 from app.services.auth import auth_service
+from app.services.profile import profile_service
 
 
 
@@ -60,6 +61,21 @@ async def verify_email_otp(
         session = response.session
         user = response.user
 
+        # Database Check: Verify if user has a profile and has completed core setup
+        profile = None
+        is_new_user = True
+        try:
+            profile = profile_service.get_profile(user.id)
+            if profile:
+                has_name = bool(profile.get("full_name") and str(profile.get("full_name")).strip())
+                is_onboarded = bool(profile.get("onboarding_completed", False))
+                is_new_user = not (has_name and is_onboarded)
+            else:
+                is_new_user = True
+        except Exception as p_err:
+            print(f"[Auth] Profile check notice: {p_err}")
+            is_new_user = True
+
         return {
             "user": {
                 "id": user.id,
@@ -70,6 +86,8 @@ async def verify_email_otp(
                 "refresh_token": session.refresh_token,
                 "expires_in": session.expires_in,
             },
+            "is_new_user": is_new_user,
+            "profile": profile,
         }
 
     except HTTPException:
