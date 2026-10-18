@@ -5,7 +5,7 @@ import { AppTheme } from '../types';
 
 const THEME_STORAGE_KEY = 'plant_scientist_theme';
 
-interface ThemeColors {
+export interface ThemeColors {
   bg: string;
   card: string;
   cardBorder: string;
@@ -16,10 +16,19 @@ interface ThemeColors {
   inputBg: string;
   primary: string;
   primaryDark: string;
+  onPrimary: string;
   accentBg: string;
   headerBg: string;
   pillBg: string;
   cardAltBg: string;
+  toolkitDoctorBg: string;
+  toolkitDoctorIcon: string;
+  toolkitSoilBg: string;
+  toolkitSoilIcon: string;
+  toolkitMapBg: string;
+  toolkitMapIcon: string;
+  toolkitExpertBg: string;
+  toolkitExpertIcon: string;
 }
 
 const LIGHT_COLORS: ThemeColors = {
@@ -33,27 +42,45 @@ const LIGHT_COLORS: ThemeColors = {
   inputBg: '#F7F9F5',
   primary: '#0D6832',
   primaryDark: '#084822',
+  onPrimary: '#FFFFFF',
   accentBg: '#E8F5E9',
   headerBg: '#FFFFFF',
   pillBg: '#EBF1E6',
   cardAltBg: '#F4F7F2',
+  toolkitDoctorBg: '#E8F5E9',
+  toolkitDoctorIcon: '#0D6832',
+  toolkitSoilBg: '#FEF3C7',
+  toolkitSoilIcon: '#D97706',
+  toolkitMapBg: '#DBEAFE',
+  toolkitMapIcon: '#2563EB',
+  toolkitExpertBg: '#F3E8FF',
+  toolkitExpertIcon: '#9333EA',
 };
 
 const DARK_COLORS: ThemeColors = {
-  bg: '#121512',
-  card: '#1C201C',
-  cardBorder: '#2C352B',
-  textPrimary: '#ECF3EB',
-  textSecondary: '#A2B29F',
-  textMuted: '#728270',
-  border: '#2C352B',
-  inputBg: '#222822',
-  primary: '#16A34A',
+  bg: '#0E1511',
+  card: '#17221B',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  textPrimary: '#E2ECE5',
+  textSecondary: '#9EB0A5',
+  textMuted: '#687C70',
+  border: 'rgba(255, 255, 255, 0.08)',
+  inputBg: '#1F2E25',
+  primary: '#66BB6A',
   primaryDark: '#0D6832',
-  accentBg: '#1A3320',
-  headerBg: '#1A1D1A',
-  pillBg: '#252D24',
-  cardAltBg: '#181C18',
+  onPrimary: '#0A2E16',
+  accentBg: 'rgba(102, 187, 106, 0.16)',
+  headerBg: '#17221B',
+  pillBg: '#1F2E25',
+  cardAltBg: '#131C16',
+  toolkitDoctorBg: 'rgba(102, 187, 106, 0.16)',
+  toolkitDoctorIcon: '#66BB6A',
+  toolkitSoilBg: 'rgba(245, 158, 11, 0.16)',
+  toolkitSoilIcon: '#FBBF24',
+  toolkitMapBg: 'rgba(56, 189, 248, 0.16)',
+  toolkitMapIcon: '#38BDF8',
+  toolkitExpertBg: 'rgba(192, 132, 252, 0.16)',
+  toolkitExpertIcon: '#C084FC',
 };
 
 interface ThemeContextType {

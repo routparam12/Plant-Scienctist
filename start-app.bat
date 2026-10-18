@@ -37,8 +37,19 @@ echo Active ADB reverse ports:
 adb reverse --list
 echo.
 
-:: Step 4: Start Expo
-echo [3/3] Starting Expo Development Server...
+:: Step 4: Ensure Backend Server is running
+echo [3/4] Checking Backend API Server...
+netstat -ano | findstr ":8000" | findstr "LISTENING" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [INFO] Backend not running on port 8000. Starting Backend in a separate window...
+    start "Plant Scientist Backend" cmd /c "%~dp0start-backend.bat"
+) else (
+    echo [OK] Backend API is already active on port 8000.
+)
+
+:: Step 5: Start Expo
+echo.
+echo [4/4] Starting Expo Development Server...
 echo ============================================
 cd /d "%~dp0mobile-app"
 npx expo start

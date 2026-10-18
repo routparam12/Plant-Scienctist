@@ -32,13 +32,13 @@ export const authStorage = {
   async isSessionExpired(): Promise<boolean> {
     try {
       const lastActiveStr = await AsyncStorage.getItem(LAST_ACTIVE_KEY);
-      if (!lastActiveStr) return true;
+      if (!lastActiveStr) return false;
       const lastActive = parseInt(lastActiveStr, 10);
-      if (isNaN(lastActive)) return true;
+      if (isNaN(lastActive)) return false;
       const elapsed = Date.now() - lastActive;
       return elapsed > SESSION_MAX_AGE_MS;
     } catch {
-      return true;
+      return false;
     }
   },
 

@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.dependencies import get_current_user
+from app.core.security import verify_access_token
 from app.schemas.diagnoses import DiagnosticResultResponse, DiagnosisResolveRequest
 from app.services.diagnosis_service import diagnosis_service
 

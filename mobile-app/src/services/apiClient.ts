@@ -240,6 +240,8 @@ export async function updateProfile(profileData: {
   district?: string;
   village?: string;
   total_acreage?: number;
+  latitude?: number;
+  longitude?: number;
 }) {
   return apiRequest('/v1/me', {
     method: 'PATCH',
@@ -256,11 +258,7 @@ export async function completeOnboarding() {
 }
 
 export async function getHomeContext() {
-  try {
-    return await apiRequest('/api/v1/users/me/home-context', { method: 'GET', requiresAuth: true });
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function updateUserLocation(locationData: {
@@ -271,10 +269,11 @@ export async function updateUserLocation(locationData: {
   source?: 'signup' | 'device' | 'manual';
 }) {
   try {
-    return await apiRequest('/api/v1/users/me/location', {
-      method: 'PATCH',
-      requiresAuth: true,
-      body: JSON.stringify(locationData),
+    return await updateProfile({
+      district: locationData.city,
+      state: locationData.state,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
     });
   } catch {
     return null;

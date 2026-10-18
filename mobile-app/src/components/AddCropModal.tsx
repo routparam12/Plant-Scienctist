@@ -49,11 +49,15 @@ export const AddCropModal: React.FC<AddCropModalProps> = ({
     setErrorMsg(null);
     try {
       const data = await getCropsCatalog();
-      setCatalog(data);
-      if (data.length > 0) {
-        setSelectedCrop(data[0]);
-        setCustomName(data[0].name);
-        setVariety(data[0].variety || '');
+      if (Array.isArray(data)) {
+        setCatalog(data);
+        if (data.length > 0) {
+          setSelectedCrop(data[0]);
+          setCustomName(data[0].name);
+          setVariety(data[0].variety || '');
+        }
+      } else {
+        setCatalog([]);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Could not load crops catalog. Please check your connection.');

@@ -29,12 +29,17 @@ import {
   X,
   Settings,
   Edit3,
+  BookOpen,
 } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
 import * as Location from 'expo-location';
 import { getFarms, getUserCrops, getProfile, getHomeContext, updateUserLocation } from '../services/apiClient';
 import { AppLanguage, Farm } from '../types';
+import { fetchAgronomyNews, NewsArticle } from '../services/newsService';
 import { CropCard } from '../components/CropCard';
 import { CropDetailModal } from '../components/CropDetailModal';
+import { WeatherAdvisoryModal } from '../components/WeatherAdvisoryModal';
+import { fetchWeatherAndSprayAdvisory, WeatherPayload } from '../services/weatherService';
 import { t, getGreeting } from '../constants/translations';
 import { useTheme } from '../context/ThemeContext';
 import { THEME } from '../constants/theme';
@@ -45,6 +50,27 @@ interface HomeScreenProps {
   onOpenScanner: () => void;
   onOpenVoice: () => void;
   onNavigateToTab?: (tab: 'home' | 'doctor' | 'appointment' | 'profile') => void;
+}
+
+function getWeatherConditionText(code: number): string {
+  if (code === 0) return 'Clear Sky';
+  if (code >= 1 && code <= 3) return 'Partly Cloudy';
+  if (code >= 45 && code <= 48) return 'Foggy';
+  if (code >= 51 && code <= 67) return 'Light Rain / Drizzle';
+  if (code >= 80 && code <= 99) return 'Rain Showers';
+  return 'Partly Cloudy';
+}
+
+function formatDisplayName(name?: string): string {
+  if (!name || !name.trim()) return 'Paramjeet';
+  let clean = name.trim();
+  if (clean.includes('@')) {
+    clean = clean.split('@')[0];
+  }
+  if (clean.includes('.')) {
+    clean = clean.split('.')[0];
+  }
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
 // Module-level session animation flag (runs typewriter ONCE per app session)
@@ -77,6 +103,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
+  // Dynamic Live Weather State & Modal
+  const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
+  const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
+
+  // Live Krishi Jagran News State
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+
+  const handleOpenLiveNewsArticle = async (url: string) => {
+    if (!url) return;
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        toolbarColor: colors.card,
+        controlsColor: colors.primary,
+      });
+    } catch (e) {
+      Alert.alert('Browser Error', 'Could not open article link.');
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       const [cropsRes, farmsRes, profileRes, contextRes] = await Promise.allSettled([
@@ -86,8 +131,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         getHomeContext(),
       ]);
 
+      let userCropNames: string[] = [];
       if (cropsRes.status === 'fulfilled' && Array.isArray(cropsRes.value)) {
         setCrops(cropsRes.value);
+        userCropNames = cropsRes.value.map((c: any) => c.name || c.custom_name);
       }
       if (farmsRes.status === 'fulfilled' && Array.isArray(farmsRes.value)) {
         setFarms(farmsRes.value);
@@ -98,6 +145,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       if (contextRes.status === 'fulfilled' && contextRes.value) {
         setHomeContext(contextRes.value);
       }
+
+      // Fetch Live Krishi Jagran RSS News
+      const liveNews = await fetchAgronomyNews(language, userCropNames);
+      setNewsArticles(liveNews);
     } catch (e) {
       console.warn('Error fetching dashboard data:', e);
     } finally {
@@ -110,10 +161,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     fetchDashboardData();
   }, []);
 
-  // Compute full target greeting based on rules
-  const userFirstName =
-    homeContext?.first_name ||
-    (profile?.full_name ? profile.full_name.split(' ')[0] : 'Paramjeet');
+  // Compute full target greeting with formatted user first name
+  const userFirstName = formatDisplayName(
+    homeContext?.first_name || (profile?.full_name ? profile.full_name : 'Paramjeet')
+  );
 
   const fullGreetingText = getGreeting({
     firstName: userFirstName,
@@ -150,25 +201,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return () => clearInterval(timer);
   }, [fullGreetingText]);
 
-  // Initial Signup / Saved Location initialization
+  // Initial Signup / Saved Location initialization & Weather Fetch
   useEffect(() => {
     const loc =
       homeContext?.current_location ||
       homeContext?.signup_location ||
-      (profile?.village || profile?.district ? { city: profile.district || profile.village, state: profile.state || 'Haryana' } : null);
+      (profile?.village || profile?.district
+        ? { city: profile.district || profile.village, state: profile.state || 'Haryana' }
+        : null);
 
+    let locStr = 'Gurugram, Haryana';
     if (loc?.city && loc?.state) {
-      setDisplayedLocation(`${loc.city}, ${loc.state}`);
+      locStr = `${loc.city}, ${loc.state}`;
     } else if (loc?.city) {
-      setDisplayedLocation(loc.city);
-    } else {
-      setDisplayedLocation('Gurugram, Haryana');
+      locStr = loc.city;
     }
+
+    setDisplayedLocation(locStr);
+    fetchLiveWeather(locStr, loc?.latitude, loc?.longitude);
   }, [homeContext, profile]);
+
+  const fetchLiveWeather = async (locName: string, paramLat?: number, paramLon?: number) => {
+    try {
+      const data = await fetchWeatherAndSprayAdvisory({
+        lat: paramLat,
+        lon: paramLon,
+        locationName: locName,
+        language,
+      });
+      setWeatherData(data);
+    } catch (err) {
+      console.warn('Weather fetch error:', err);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
+    if (displayedLocation) {
+      fetchLiveWeather(displayedLocation);
+    }
   };
 
   const handleOpenLocationSheet = () => {
@@ -209,6 +281,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         const newLocStr = `${city}, ${state}`;
 
         setDisplayedLocation(newLocStr);
+        fetchLiveWeather(newLocStr, latitude, longitude);
+
         await updateUserLocation({
           city,
           state,
@@ -227,6 +301,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const currentFarm = farms[0];
   const allCrops = crops;
+  const activeCropName = allCrops[0]?.name || 'Tomato';
 
   const filteredCrops =
     selectedCategory === 'All'
@@ -250,30 +325,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setDetailModalVisible(true);
   };
 
-  const dayForecasts = [
-    { day: 'M', rain: 10, label: 'Clear' },
-    { day: 'T', rain: 15, label: 'Clear' },
-    { day: 'W', rain: 35, label: 'Cloudy' },
-    { day: 'T', rain: 88, label: 'Rain 18mm', highlight: true },
-    { day: 'F', rain: 12, label: 'Best Spray' },
-    { day: 'S', rain: 5, label: 'Clear' },
-    { day: 'S', rain: 10, label: 'Sunny' },
-  ];
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* 1. Header with Typewriter Greeting & Interactive Location */}
+        {/* 1. Header with Typewriter Greeting & Anti-Clipped Flower Emoji */}
         <View style={styles.topHeader}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            {/* Dynamic Typewriter Greeting as Main Bold Heading (Removed "NAMASTE, FARMER") */}
-            <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>
-              {displayedGreeting}
-              {isTyping ? <Text style={styles.cursorText}>|</Text> : ''}
-            </Text>
+            <View style={styles.greetingRow}>
+              <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>
+                {displayedGreeting}
+              </Text>
+              <Text style={styles.emojiGlyph}>🪻</Text>
+              {isTyping ? <Text style={styles.cursorText}>|</Text> : null}
+            </View>
 
             {/* Clickable Location Button Underneath */}
             <Pressable style={styles.locationButton} onPress={handleOpenLocationSheet}>
@@ -294,19 +361,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
 
         {/* 2. Voice & Camera Capsule Input Bar */}
-        <View style={[styles.capsuleBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Pressable style={[styles.capsuleMicBtn, { backgroundColor: colors.primary }]} onPress={onOpenVoice}>
-            <Mic size={18} color="#FFFFFF" />
-          </Pressable>
-          <Pressable style={styles.capsuleTextContainer} onPress={onOpenVoice}>
+        <Pressable
+          style={[styles.capsuleBar, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={onOpenVoice}
+        >
+          <View style={[styles.capsuleMicBtn, { backgroundColor: colors.primary }]}>
+            <Mic size={18} color={colors.onPrimary || '#FFFFFF'} />
+          </View>
+          <View style={styles.capsuleTextContainer}>
             <Text style={[styles.capsulePlaceholder, { color: colors.textMuted }]}>
               {t('home.askPlaceholder', language)}
             </Text>
-          </Pressable>
-          <Pressable style={styles.capsuleCameraBtn} onPress={onOpenScanner}>
-            <Camera size={20} color={colors.primary} />
-          </Pressable>
-        </View>
+          </View>
+          <View style={[styles.capsuleSpeakBadge, { backgroundColor: colors.accentBg, borderColor: colors.border }]}>
+            <Text style={[styles.capsuleSpeakBadgeText, { color: colors.primary }]}>
+              {language === 'hi' ? '🎙️ बोलें' : '🎙️ Speak'}
+            </Text>
+          </View>
+        </Pressable>
 
         {/* 3. Agronomy Quick Action Grid */}
         <View style={styles.toolkitSection}>
@@ -315,8 +387,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </Text>
           <View style={styles.toolkitGrid}>
             <Pressable style={[styles.toolkitCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onOpenScanner}>
-              <View style={[styles.toolkitIconBox, { backgroundColor: colors.accentBg }]}>
-                <Camera size={18} color={colors.primary} />
+              <View style={[styles.toolkitIconBox, { backgroundColor: colors.toolkitDoctorBg }]}>
+                <Camera size={18} color={colors.toolkitDoctorIcon} />
               </View>
               <Text style={[styles.toolkitLabel, { color: colors.textPrimary }]}>
                 {language === 'hi' ? 'एआई डॉक्टर' : 'AI Doctor'}
@@ -332,7 +404,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 )
               }
             >
-              <View style={[styles.toolkitIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <View style={[styles.toolkitIconBox, { backgroundColor: colors.toolkitSoilBg }]}>
                 <Text style={{ fontSize: 16 }}>🧪</Text>
               </View>
               <Text style={[styles.toolkitLabel, { color: colors.textPrimary }]}>
@@ -345,11 +417,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onPress={() =>
                 Alert.alert(
                   'Farm Satellite Boundaries',
-                  `Main Farm: ${currentFarm?.totalAcreage || 14.5} Acres\nSoil Type: Alluvial Loam\nSurvey No: 412/A, Chandaka Belt`
+                  `Main Farm: ${currentFarm?.totalAcreage || 14.5} Acres\nSoil Type: Alluvial Loam\nSurvey No: 412/A, ${displayedLocation}`
                 )
               }
             >
-              <View style={[styles.toolkitIconBox, { backgroundColor: '#DBEAFE' }]}>
+              <View style={[styles.toolkitIconBox, { backgroundColor: colors.toolkitMapBg }]}>
                 <Text style={{ fontSize: 16 }}>🗺️</Text>
               </View>
               <Text style={[styles.toolkitLabel, { color: colors.textPrimary }]}>
@@ -361,7 +433,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               style={[styles.toolkitCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
               onPress={() => onNavigateToTab?.('appointment')}
             >
-              <View style={[styles.toolkitIconBox, { backgroundColor: '#F3E8FF' }]}>
+              <View style={[styles.toolkitIconBox, { backgroundColor: colors.toolkitExpertBg }]}>
                 <Text style={{ fontSize: 16 }}>👨‍⚕️</Text>
               </View>
               <Text style={[styles.toolkitLabel, { color: colors.textPrimary }]}>
@@ -371,8 +443,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         </View>
 
-        {/* 4. Weather Card for Today */}
-        <View style={[styles.weatherCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        {/* 4. Single Consolidated Compact Weather Card */}
+        <Pressable
+          style={[styles.weatherCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+          onPress={() => setIsWeatherModalOpen(true)}
+        >
           <View style={styles.weatherCardTop}>
             <View style={styles.weatherTitleRow}>
               <CloudRain size={16} color={colors.primary} />
@@ -388,82 +463,53 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <View style={styles.weatherMainRow}>
             <View>
               <View style={styles.tempRow}>
-                <Text style={[styles.tempText, { color: colors.textPrimary }]}>29°C</Text>
+                <Text style={[styles.tempText, { color: colors.textPrimary }]}>
+                  {weatherData ? `${weatherData.temperature}°C` : '29°C'}
+                </Text>
                 <Text style={[styles.tempLocText, { color: colors.textSecondary }]}>
                   {displayedLocation}
                 </Text>
               </View>
               <Text style={[styles.weatherSubtext, { color: colors.textMuted }]}>
-                Partly Cloudy • Humidity 76% • Wind 9 km/h
+                {weatherData
+                  ? `${weatherData.conditionLabel} • Humidity ${weatherData.humidity}% • Wind ${weatherData.windSpeed} km/h`
+                  : 'Partly Cloudy • Humidity 76% • Wind 9 km/h'}
               </Text>
             </View>
 
             <View style={[styles.weatherIconCircle, { backgroundColor: colors.accentBg }]}>
-              <Text style={{ fontSize: 24 }}>⛅</Text>
+              <Text style={{ fontSize: 24 }}>
+                {weatherData && weatherData.maxRainProb >= 50 ? '🌧️' : '⛅'}
+              </Text>
             </View>
           </View>
-        </View>
 
-        {/* 5. Smart Spray Advisory Banner with Days Forecast */}
-        <View style={styles.sprayBanner}>
-          <View style={styles.sprayBannerTop}>
-            <View style={styles.rainBadge}>
-              <CloudRain size={15} color="#1D4ED8" />
-              <Text style={styles.rainBadgeText}>Rain Alert (85% prob)</Text>
+          {/* Compact 1-line Rain Alert Pill inside Weather Card when rain probability is high */}
+          {weatherData && weatherData.maxRainProb >= 50 && (
+            <View style={styles.compactRainPill}>
+              <Text style={styles.compactRainPillText} numberOfLines={1}>
+                🌧️ Rain Alert ({weatherData.maxRainProb}% prob) — Delay foliar spray • Tap for details →
+              </Text>
             </View>
-            <Text style={styles.sprayCropBadge}>Tomato • Day 34</Text>
-          </View>
+          )}
+        </Pressable>
 
-          <Text style={styles.sprayHeadline}>
-            Rain Thursday afternoon. Delay foliar spray to Friday.
-          </Text>
-          <Text style={styles.spraySubheadline}>
-            IMD Doppler Radar: 18mm convective coastal showers. Recommended: Streptocycline 6g + Copper Oxychloride 300g per 150L.
-          </Text>
-
-          {/* 7-Day Calendar Forecast Indicators */}
-          <View style={styles.calendarRow}>
-            {dayForecasts.map((df, i) => (
-              <View
-                key={i}
-                style={[styles.calendarDayBox, df.highlight && styles.calendarDayHighlight]}
-              >
-                <Text style={[styles.calDayText, df.highlight && styles.calDayTextHighlight]}>
-                  {df.day}
-                </Text>
-                <Text style={[styles.calRainText, df.highlight && styles.calRainTextHighlight]}>
-                  {df.rain}%
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.sprayMetaRow}>
-            <View style={styles.sprayMetaItem}>
-              <Wind size={14} color="#1E40AF" />
-              <Text style={styles.sprayMetaText}>9 km/h (Ideal Friday)</Text>
-            </View>
-            <View style={styles.sprayMetaItem}>
-              <Clock size={14} color="#1E40AF" />
-              <Text style={styles.sprayMetaText}>Friday, 07:00 AM</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 6. Crop Category Filter Pills */}
+        {/* 5. Crop Category Filter Pills */}
         <View style={styles.categoryHeader}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {language === 'hi' ? `सक्रिय फसलें (${filteredCrops.length})` : `Active Portfolio (${filteredCrops.length})`}
           </Text>
-          <Pressable
-            style={[styles.addCropBtn, { backgroundColor: colors.primary }]}
-            onPress={() => onOpenAddCrop(currentFarm?.id || 'default-farm')}
-          >
-            <Plus size={16} color="#FFFFFF" />
-            <Text style={styles.addCropBtnText}>
-              {language === 'hi' ? '+ फसल जोड़ें' : 'Add Crop'}
-            </Text>
-          </Pressable>
+          {filteredCrops.length > 0 && (
+            <Pressable
+              style={[styles.addCropBtn, { backgroundColor: colors.primary }]}
+              onPress={() => onOpenAddCrop(currentFarm?.id || 'default-farm')}
+            >
+              <Plus size={16} color="#FFFFFF" />
+              <Text style={styles.addCropBtnText}>
+                {language === 'hi' ? '+ फसल जोड़ें' : 'Add Crop'}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
@@ -490,7 +536,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           ))}
         </ScrollView>
 
-        {/* 7. Crops List */}
+        {/* 6. Crops List */}
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginVertical: 30 }} />
         ) : filteredCrops.length === 0 ? (
@@ -518,7 +564,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           ))
         )}
 
-        {/* 8. Upcoming Tasks Section */}
+        {/* 7. Upcoming Tasks Section */}
         <View style={styles.tasksSection}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {language === 'hi' ? 'प्राथमिक खेत कार्य' : 'Priority Field Tasks'}
@@ -553,7 +599,67 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <CheckCircle2 size={20} color={colors.textMuted} />
           </View>
         </View>
+
+        {/* 8. Krishi Jagran Live Agri News Section */}
+        {newsArticles.length > 0 && (
+          <View style={styles.knowledgeHubSection}>
+            <View style={styles.knowledgeHubHeader}>
+              <View style={styles.knowledgeTitleRow}>
+                <BookOpen size={18} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  {language === 'hi' ? 'कृषि जागरण लाइव समाचार' : 'KRISHI JAGRAN LIVE AGRI NEWS'}
+                </Text>
+              </View>
+
+              <Text style={[styles.knowledgeSublabel, { color: colors.textMuted }]}>
+                {language === 'hi' ? 'ताजा कृषि बुलेटिन • 24 घंटे अपडेट' : 'LIVE RSS BULLETIN • UPDATED DAILY'}
+              </Text>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.articleScroll}>
+              {newsArticles.map((item) => (
+                <Pressable
+                  key={item.id}
+                  style={[styles.articleCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                  onPress={() => handleOpenLiveNewsArticle(item.link)}
+                >
+                  <View style={styles.articleTopRow}>
+                    <Text style={[styles.articleSourceTag, { color: colors.primary }]}>{item.source}</Text>
+                    {item.matchedCrop && (
+                      <View style={[styles.articleCategoryBadge, { backgroundColor: colors.accentBg }]}>
+                        <Text style={[styles.articleCategoryText, { color: colors.primary }]}>
+                          {language === 'hi' ? 'आपकी फसल' : 'Your Crop'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={[styles.articleTitleText, { color: colors.textPrimary }]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+
+                  <Text style={[styles.articleMetaText, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {item.snippet}
+                  </Text>
+
+                  <Text style={[styles.articleReadLink, { color: colors.primary }]}>
+                    {language === 'hi' ? 'पूरा लेख पढ़ें →' : 'Read full article →'}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Weather Advisory Modal */}
+      <WeatherAdvisoryModal
+        visible={isWeatherModalOpen}
+        language={language}
+        weatherData={weatherData}
+        activeCropName={activeCropName}
+        onClose={() => setIsWeatherModalOpen(false)}
+      />
 
       {/* Crop Detail Modal */}
       <CropDetailModal
@@ -636,7 +742,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         'Enter City, State',
                         'e.g. Gurugram, Haryana',
                         (text) => {
-                          if (text && text.trim()) setDisplayedLocation(text.trim());
+                          if (text && text.trim()) {
+                            setDisplayedLocation(text.trim());
+                            fetchLiveWeather(text.trim());
+                          }
                         }
                       )
                     : Alert.alert('Manual Location', 'Type your city and state in profile details.');
@@ -673,7 +782,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 110,
+    paddingBottom: 140,
   },
   topHeader: {
     flexDirection: 'row',
@@ -682,10 +791,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 4,
   },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
   greetingTitle: {
     fontSize: 22,
     fontWeight: '800',
     marginTop: 2,
+  },
+  emojiGlyph: {
+    fontSize: 22,
+    fontWeight: 'normal',
+    includeFontPadding: false,
+    paddingHorizontal: 4,
+    lineHeight: 32,
   },
   cursorText: {
     color: '#0D6832',
@@ -747,13 +868,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  capsuleCameraBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 2,
+  capsuleSpeakBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginRight: 4,
+  },
+  capsuleSpeakBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   toolkitSection: {
     marginBottom: 20,
@@ -842,100 +966,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sprayBanner: {
+  compactRainPill: {
+    marginTop: 12,
     backgroundColor: '#EFF6FF',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#BFDBFE',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  sprayBannerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  rainBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  rainBadgeText: {
+  compactRainPillText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#1D4ED8',
-  },
-  sprayCropBadge: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  sprayHeadline: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1E3A8A',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  spraySubheadline: {
-    fontSize: 12,
-    color: '#3B82F6',
-    lineHeight: 16,
-    marginBottom: 12,
-  },
-  calendarRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  calendarDayBox: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    minWidth: 40,
-  },
-  calendarDayHighlight: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
-  },
-  calDayText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#1E3A8A',
-  },
-  calDayTextHighlight: {
-    color: '#FFFFFF',
-  },
-  calRainText: {
-    fontSize: 9,
-    color: '#3B82F6',
-    marginTop: 2,
-  },
-  calRainTextHighlight: {
-    color: '#BFDBFE',
-  },
-  sprayMetaRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  sprayMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sprayMetaText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#1E40AF',
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -1094,5 +1137,90 @@ const styles = StyleSheet.create({
   optionRowText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  knowledgeHubSection: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  knowledgeHubHeader: {
+    marginBottom: 12,
+  },
+  knowledgeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  knowledgeSublabel: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  articleScroll: {
+    flexDirection: 'row',
+  },
+  articleCard: {
+    width: 260,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    marginRight: 12,
+    justifyContent: 'space-between',
+  },
+  articleTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  articleEmblemBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  articleCategoryBadge: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  articleCategoryText: {
+    fontSize: 9,
+    fontFamily: 'monospace',
+    fontWeight: '800',
+  },
+  articleTitleText: {
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  articleMetaText: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    marginBottom: 10,
+  },
+  articleSourceTag: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    fontWeight: '800',
+  },
+  articleReadLink: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  articleRoiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  articleRoiText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
 });

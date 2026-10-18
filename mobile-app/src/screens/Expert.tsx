@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { Agronomist, AppLanguage, ConsultationBooking } from '../types';
 import { AGRONOMISTS_MARKETPLACE, INITIAL_BOOKINGS } from '../data/mockData';
+import { useTheme } from '../context/ThemeContext';
 import { THEME } from '../constants/theme';
 
 interface ExpertScreenProps {
@@ -39,6 +40,7 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
   language = 'hi',
   preselectedDisease,
 }) => {
+  const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'marketplace' | 'my-bookings'>('marketplace');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All');
   const [bookingAgronomist, setBookingAgronomist] = useState<Agronomist | null>(null);
@@ -102,22 +104,24 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* 1. Header with Eyebrow and 48px Circular Action */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>AGRONOMIST // MARKETPLACE [Demo Data]</Text>
-            <Text style={styles.title}>Field Experts.</Text>
+            <Text style={[styles.eyebrow, { color: colors.textMuted }]}>
+              AGRONOMIST // VERIFIED ICAR NETWORK
+            </Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Field Experts.</Text>
           </View>
 
           <Pressable
-            style={styles.headerActionBtn}
+            style={[styles.headerActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => setActiveTab(activeTab === 'marketplace' ? 'my-bookings' : 'marketplace')}
           >
-            <Calendar size={20} color={THEME.colors.primary} />
+            <Calendar size={20} color={colors.primary} />
             {bookings.length > 0 && (
-              <View style={styles.badgeCount}>
+              <View style={[styles.badgeCount, { backgroundColor: colors.primary }]}>
                 <Text style={styles.badgeCountText}>{bookings.length}</Text>
               </View>
             )}
@@ -125,15 +129,19 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
         </View>
 
         {/* 2. View Switcher Pill */}
-        <View style={styles.switcherPill}>
+        <View style={[styles.switcherPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Pressable
-            style={[styles.switcherBtn, activeTab === 'marketplace' && styles.switcherBtnActive]}
+            style={[
+              styles.switcherBtn,
+              activeTab === 'marketplace' && [styles.switcherBtnActive, { backgroundColor: colors.primary }],
+            ]}
             onPress={() => setActiveTab('marketplace')}
           >
             <Text
               style={[
                 styles.switcherBtnText,
-                activeTab === 'marketplace' && styles.switcherBtnTextActive,
+                { color: colors.textSecondary },
+                activeTab === 'marketplace' && { color: colors.onPrimary || '#FFFFFF' },
               ]}
             >
               Find Expert
@@ -141,13 +149,17 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
           </Pressable>
 
           <Pressable
-            style={[styles.switcherBtn, activeTab === 'my-bookings' && styles.switcherBtnActive]}
+            style={[
+              styles.switcherBtn,
+              activeTab === 'my-bookings' && [styles.switcherBtnActive, { backgroundColor: colors.primary }],
+            ]}
             onPress={() => setActiveTab('my-bookings')}
           >
             <Text
               style={[
                 styles.switcherBtnText,
-                activeTab === 'my-bookings' && styles.switcherBtnTextActive,
+                { color: colors.textSecondary },
+                activeTab === 'my-bookings' && { color: colors.onPrimary || '#FFFFFF' },
               ]}
             >
               My Bookings
@@ -156,13 +168,15 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
               <View
                 style={[
                   styles.switcherCountBadge,
-                  activeTab === 'my-bookings' && styles.switcherCountBadgeActive,
+                  { backgroundColor: colors.primary },
+                  activeTab === 'my-bookings' && { backgroundColor: '#FFFFFF' },
                 ]}
               >
                 <Text
                   style={[
                     styles.switcherCountText,
-                    activeTab === 'my-bookings' && styles.switcherCountTextActive,
+                    { color: '#FFFFFF' },
+                    activeTab === 'my-bookings' && { color: colors.primary },
                   ]}
                 >
                   {bookings.length}
@@ -185,10 +199,20 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                 return (
                   <Pressable
                     key={spec}
-                    style={[styles.specChip, isSelected && styles.specChipSelected]}
+                    style={[
+                      styles.specChip,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ]}
                     onPress={() => setSelectedSpecialty(spec)}
                   >
-                    <Text style={[styles.specChipText, isSelected && styles.specChipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.specChipText,
+                        { color: colors.textSecondary },
+                        isSelected && { color: colors.onPrimary || '#FFFFFF', fontWeight: '700' },
+                      ]}
+                    >
                       {spec}
                     </Text>
                   </Pressable>
@@ -199,14 +223,20 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
             {/* Expert Cards */}
             <View style={styles.expertsList}>
               {filteredAgronomists.map((agronomist) => (
-                <View key={agronomist.id} style={styles.expertCard}>
+                <View
+                  key={agronomist.id}
+                  style={[
+                    styles.expertCard,
+                    { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                  ]}
+                >
                   {/* Top Row: Avatar + Details + Rating/Fee */}
                   <View style={styles.expertTopRow}>
                     <View style={styles.expertLeft}>
                       <View
                         style={[
                           styles.avatarCircle,
-                          { backgroundColor: agronomist.avatarBg || '#16882B' },
+                          { backgroundColor: agronomist.avatarBg || colors.primary },
                         ]}
                       >
                         <Text style={styles.avatarInitials}>{agronomist.avatarInitials}</Text>
@@ -214,15 +244,19 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                       <View style={{ flex: 1 }}>
                         <View style={styles.nameRow}>
-                          <Text style={styles.expertName}>{agronomist.name}</Text>
-                          <View style={styles.icarBadge}>
-                            <ShieldCheck size={11} color="#2E7D32" />
-                            <Text style={styles.icarBadgeText}>ICAR</Text>
+                          <Text style={[styles.expertName, { color: colors.textPrimary }]}>
+                            {agronomist.name}
+                          </Text>
+                          <View style={[styles.icarBadge, { backgroundColor: colors.accentBg }]}>
+                            <ShieldCheck size={11} color={colors.primary} />
+                            <Text style={[styles.icarBadgeText, { color: colors.primary }]}>ICAR</Text>
                           </View>
                         </View>
 
-                        <Text style={styles.expertTitle}>{agronomist.title}</Text>
-                        <Text style={styles.expertMeta}>
+                        <Text style={[styles.expertTitle, { color: colors.textSecondary }]}>
+                          {agronomist.title}
+                        </Text>
+                        <Text style={[styles.expertMeta, { color: colors.textMuted }]}>
                           {agronomist.institution} • {agronomist.experienceYears} YRS EXP
                         </Text>
                       </View>
@@ -232,41 +266,49 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                       <View style={styles.ratingRow}>
                         <Star size={12} color="#D97706" fill="#D97706" />
                         <Text style={styles.ratingNum}>{agronomist.rating}</Text>
-                        <Text style={styles.reviewCount}>({agronomist.reviewCount})</Text>
+                        <Text style={[styles.reviewCount, { color: colors.textMuted }]}>
+                          ({agronomist.reviewCount})
+                        </Text>
                       </View>
-                      <Text style={styles.feeAmount}>₹{agronomist.fee}</Text>
-                      <Text style={styles.feeSub}>PER SESSION</Text>
+                      <Text style={[styles.feeAmount, { color: colors.primary }]}>
+                        ₹{agronomist.fee}
+                      </Text>
+                      <Text style={[styles.feeSub, { color: colors.textMuted }]}>PER SESSION</Text>
                     </View>
                   </View>
 
                   {/* Bio quote */}
                   {agronomist.bio && (
-                    <View style={styles.bioBox}>
-                      <Text style={styles.bioText}>"{agronomist.bio}"</Text>
+                    <View style={[styles.bioBox, { backgroundColor: colors.pillBg }]}>
+                      <Text style={[styles.bioText, { color: colors.textSecondary }]}>
+                        "{agronomist.bio}"
+                      </Text>
                     </View>
                   )}
 
                   {/* Languages & Next Slot */}
                   <View style={styles.metaRow}>
                     <View style={styles.languagesList}>
-                      <Text style={styles.langLabel}>LANGUAGES:</Text>
+                      <Text style={[styles.langLabel, { color: colors.textMuted }]}>LANGUAGES:</Text>
                       {(agronomist.languages || ['Hindi', 'English']).map((lang) => (
-                        <View key={lang} style={styles.langPill}>
-                          <Text style={styles.langPillText}>{lang}</Text>
+                        <View key={lang} style={[styles.langPill, { backgroundColor: colors.accentBg }]}>
+                          <Text style={[styles.langPillText, { color: colors.primary }]}>{lang}</Text>
                         </View>
                       ))}
                     </View>
 
                     <View style={styles.slotRow}>
-                      <Clock size={12} color="#2E7D32" />
-                      <Text style={styles.slotText}>{agronomist.nextSlot}</Text>
+                      <Clock size={12} color={colors.primary} />
+                      <Text style={[styles.slotText, { color: colors.primary }]}>
+                        {agronomist.nextSlot}
+                      </Text>
                     </View>
                   </View>
 
                   {/* Action Buttons */}
-                  <View style={styles.cardActions}>
+                  <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                     <Pressable
-                      style={styles.bookCallBtn}
+                      style={[styles.bookCallBtn, { backgroundColor: colors.primary }]}
                       onPress={() => {
                         setBookingAgronomist(agronomist);
                         setSelectedConsultationType('Video Call');
@@ -279,14 +321,17 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                     </Pressable>
 
                     <Pressable
-                      style={styles.voiceCallBtn}
+                      style={[
+                        styles.voiceCallBtn,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
                       onPress={() => {
                         setBookingAgronomist(agronomist);
                         setSelectedConsultationType('Voice Call');
                       }}
                     >
-                      <Phone size={14} color="#334155" />
-                      <Text style={styles.voiceCallBtnText}>Voice</Text>
+                      <Phone size={14} color={colors.textPrimary} />
+                      <Text style={[styles.voiceCallBtnText, { color: colors.textPrimary }]}>Voice</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -297,14 +342,16 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
           /* My Bookings View */
           <View style={styles.bookingsList}>
             {bookings.length === 0 ? (
-              <View style={styles.emptyBookingsBox}>
-                <Calendar size={36} color="#CBD5E1" />
-                <Text style={styles.emptyTitle}>No active consultation bookings</Text>
-                <Text style={styles.emptySub}>
+              <View style={[styles.emptyBookingsBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Calendar size={36} color={colors.textMuted} />
+                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                  No active consultation bookings
+                </Text>
+                <Text style={[styles.emptySub, { color: colors.textMuted }]}>
                   Book a video consultation with verified ICAR agronomists anytime.
                 </Text>
                 <Pressable
-                  style={styles.browseExpertsBtn}
+                  style={[styles.browseExpertsBtn, { backgroundColor: colors.primary }]}
                   onPress={() => setActiveTab('marketplace')}
                 >
                   <Text style={styles.browseExpertsText}>Browse Experts</Text>
@@ -312,31 +359,46 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
               </View>
             ) : (
               bookings.map((booking) => (
-                <View key={booking.id} style={styles.bookingCard}>
+                <View
+                  key={booking.id}
+                  style={[styles.bookingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                >
                   <View style={styles.bookingCardHeader}>
                     <View>
-                      <View style={styles.statusPill}>
-                        <Text style={styles.statusPillText}>{booking.status}</Text>
+                      <View style={[styles.statusPill, { backgroundColor: colors.accentBg }]}>
+                        <Text style={[styles.statusPillText, { color: colors.primary }]}>
+                          {booking.status}
+                        </Text>
                       </View>
-                      <Text style={styles.bookingAgroName}>{booking.agronomistName}</Text>
-                      <Text style={styles.bookingAgroTitle}>{booking.agronomistTitle}</Text>
+                      <Text style={[styles.bookingAgroName, { color: colors.textPrimary }]}>
+                        {booking.agronomistName}
+                      </Text>
+                      <Text style={[styles.bookingAgroTitle, { color: colors.textMuted }]}>
+                        {booking.agronomistTitle}
+                      </Text>
                     </View>
 
-                    <Text style={styles.paidBadge}>₹{booking.fee} PAID</Text>
+                    <Text style={[styles.paidBadge, { color: colors.primary }]}>
+                      ₹{booking.fee} PAID
+                    </Text>
                   </View>
 
-                  <View style={styles.bookingDetailsBox}>
+                  <View style={[styles.bookingDetailsBox, { backgroundColor: colors.pillBg }]}>
                     <View style={styles.detailItem}>
-                      <Calendar size={13} color="#2E7D32" />
-                      <Text style={styles.detailText}>{booking.date}</Text>
+                      <Calendar size={13} color={colors.primary} />
+                      <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                        {booking.date}
+                      </Text>
                     </View>
                     <View style={styles.detailItem}>
-                      <Clock size={13} color="#2E7D32" />
-                      <Text style={styles.detailText}>{booking.timeSlot}</Text>
+                      <Clock size={13} color={colors.primary} />
+                      <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                        {booking.timeSlot}
+                      </Text>
                     </View>
                     <View style={[styles.detailItem, { width: '100%', marginTop: 4 }]}>
-                      <Video size={13} color="#2E7D32" />
-                      <Text style={styles.detailText}>
+                      <Video size={13} color={colors.primary} />
+                      <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                         Mode: {booking.type} • Plot: {booking.crop}
                       </Text>
                     </View>
@@ -344,20 +406,22 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                   {/* Auto-Attached Case History Display */}
                   {booking.notes && (
-                    <View style={styles.caseAttachmentBox}>
+                    <View style={[styles.caseAttachmentBox, { backgroundColor: colors.accentBg, borderColor: colors.border }]}>
                       <View style={styles.caseAttachmentHeader}>
-                        <Paperclip size={12} color="#2E7D32" />
-                        <Text style={styles.caseAttachmentTitle}>
+                        <Paperclip size={12} color={colors.primary} />
+                        <Text style={[styles.caseAttachmentTitle, { color: colors.primary }]}>
                           AUTO-ATTACHED CASE HISTORY & SCAN REPORT
                         </Text>
                       </View>
-                      <Text style={styles.caseAttachmentContent}>"{booking.notes}"</Text>
+                      <Text style={[styles.caseAttachmentContent, { color: colors.textSecondary }]}>
+                        "{booking.notes}"
+                      </Text>
                     </View>
                   )}
 
                   {/* Join Consultation Room Button */}
                   <Pressable
-                    style={styles.joinRoomBtn}
+                    style={[styles.joinRoomBtn, { backgroundColor: colors.primary }]}
                     onPress={() => setActiveVideoCallBooking(booking)}
                   >
                     <Video size={16} color="#FFFFFF" />
@@ -381,14 +445,14 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
           onRequestClose={() => setBookingAgronomist(null)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.bookingModalContent}>
+            <View style={[styles.bookingModalContent, { backgroundColor: colors.card }]}>
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <View style={styles.modalHeaderInfo}>
                   <View
                     style={[
                       styles.avatarCircleSmall,
-                      { backgroundColor: bookingAgronomist.avatarBg || '#16882B' },
+                      { backgroundColor: bookingAgronomist.avatarBg || colors.primary },
                     ]}
                   >
                     <Text style={styles.avatarInitialsSmall}>
@@ -396,35 +460,39 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                     </Text>
                   </View>
                   <View>
-                    <Text style={styles.modalTitle}>Book {bookingAgronomist.name}</Text>
-                    <Text style={styles.modalSub}>
+                    <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                      Book {bookingAgronomist.name}
+                    </Text>
+                    <Text style={[styles.modalSub, { color: colors.textMuted }]}>
                       Fee: ₹{bookingAgronomist.fee} • {bookingAgronomist.institution}
                     </Text>
                   </View>
                 </View>
 
                 <Pressable
-                  style={styles.modalCloseBtn}
+                  style={[styles.modalCloseBtn, { backgroundColor: colors.pillBg }]}
                   onPress={() => setBookingAgronomist(null)}
                 >
-                  <X size={18} color="#475569" />
+                  <X size={18} color={colors.textMuted} />
                 </Pressable>
               </View>
 
               {/* Scrollable Form Content */}
               <ScrollView style={styles.bookingFormScroll} showsVerticalScrollIndicator={false}>
                 {/* Auto-Attached Case History Banner */}
-                <View style={styles.autoAttachBanner}>
+                <View style={[styles.autoAttachBanner, { backgroundColor: colors.accentBg }]}>
                   <View style={styles.autoAttachHeader}>
                     <View style={styles.autoAttachLeft}>
-                      <Paperclip size={13} color="#2E7D32" />
-                      <Text style={styles.autoAttachTitle}>AUTO-ATTACHING CROP CASE HISTORY</Text>
+                      <Paperclip size={13} color={colors.primary} />
+                      <Text style={[styles.autoAttachTitle, { color: colors.primary }]}>
+                        AUTO-ATTACHING CROP CASE HISTORY
+                      </Text>
                     </View>
-                    <Text style={styles.attachedPill}>ATTACHED</Text>
+                    <Text style={[styles.attachedPill, { color: colors.primary }]}>ATTACHED</Text>
                   </View>
 
-                  <View style={styles.caseSelectContainer}>
-                    <Text style={styles.caseSelectText}>
+                  <View style={[styles.caseSelectContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.caseSelectText, { color: colors.textPrimary }]}>
                       🌿 {selectedCropCase}
                     </Text>
                   </View>
@@ -432,25 +500,33 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                 {/* Consultation Mode */}
                 <View style={styles.formSection}>
-                  <Text style={styles.formLabel}>CONSULTATION MODE</Text>
+                  <Text style={[styles.formLabel, { color: colors.textMuted }]}>CONSULTATION MODE</Text>
                   <View style={styles.modeButtonsRow}>
                     {(['Video Call', 'Voice Call', 'In-Field Visit'] as const).map((type) => {
                       const isSelected = selectedConsultationType === type;
                       return (
                         <Pressable
                           key={type}
-                          style={[styles.modeBtn, isSelected && styles.modeBtnSelected]}
+                          style={[
+                            styles.modeBtn,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
                           onPress={() => setSelectedConsultationType(type)}
                         >
                           {type === 'Video Call' ? (
-                            <Video size={16} color={isSelected ? '#FFFFFF' : '#475569'} />
+                            <Video size={16} color={isSelected ? '#FFFFFF' : colors.textSecondary} />
                           ) : type === 'Voice Call' ? (
-                            <Phone size={16} color={isSelected ? '#FFFFFF' : '#475569'} />
+                            <Phone size={16} color={isSelected ? '#FFFFFF' : colors.textSecondary} />
                           ) : (
-                            <MapPin size={16} color={isSelected ? '#FFFFFF' : '#475569'} />
+                            <MapPin size={16} color={isSelected ? '#FFFFFF' : colors.textSecondary} />
                           )}
                           <Text
-                            style={[styles.modeBtnText, isSelected && styles.modeBtnTextSelected]}
+                            style={[
+                              styles.modeBtnText,
+                              { color: colors.textSecondary },
+                              isSelected && { color: colors.onPrimary || '#FFFFFF', fontWeight: '700' },
+                            ]}
                           >
                             {type}
                           </Text>
@@ -462,18 +538,26 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                 {/* Date Selection */}
                 <View style={styles.formSection}>
-                  <Text style={styles.formLabel}>SELECT DATE</Text>
+                  <Text style={[styles.formLabel, { color: colors.textMuted }]}>SELECT DATE</Text>
                   <View style={styles.dateButtonsRow}>
                     {['Today, Oct 15', 'Tomorrow, Oct 16', 'Friday, Oct 17'].map((d) => {
                       const isSelected = selectedDate === d;
                       return (
                         <Pressable
                           key={d}
-                          style={[styles.dateBtn, isSelected && styles.dateBtnSelected]}
+                          style={[
+                            styles.dateBtn,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isSelected && { backgroundColor: colors.accentBg, borderColor: colors.primary },
+                          ]}
                           onPress={() => setSelectedDate(d)}
                         >
                           <Text
-                            style={[styles.dateBtnText, isSelected && styles.dateBtnTextSelected]}
+                            style={[
+                              styles.dateBtnText,
+                              { color: colors.textSecondary },
+                              isSelected && { color: colors.primary, fontWeight: '800' },
+                            ]}
                           >
                             {d}
                           </Text>
@@ -485,7 +569,7 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                 {/* Available Slots */}
                 <View style={styles.formSection}>
-                  <Text style={styles.formLabel}>AVAILABLE SLOTS</Text>
+                  <Text style={[styles.formLabel, { color: colors.textMuted }]}>AVAILABLE SLOTS</Text>
                   <View style={styles.slotsGrid}>
                     {[
                       '10:00 AM - 10:30 AM',
@@ -497,11 +581,19 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                       return (
                         <Pressable
                           key={slot}
-                          style={[styles.slotBtn, isSelected && styles.slotBtnSelected]}
+                          style={[
+                            styles.slotBtn,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isSelected && { backgroundColor: colors.accentBg, borderColor: colors.primary },
+                          ]}
                           onPress={() => setSelectedTimeSlot(slot)}
                         >
                           <Text
-                            style={[styles.slotBtnText, isSelected && styles.slotBtnTextSelected]}
+                            style={[
+                              styles.slotBtnText,
+                              { color: colors.textSecondary },
+                              isSelected && { color: colors.primary, fontWeight: '800' },
+                            ]}
                           >
                             {slot}
                           </Text>
@@ -513,11 +605,14 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 
                 {/* Farmer Notes */}
                 <View style={styles.formSection}>
-                  <Text style={styles.formLabel}>ADDITIONAL FARMER NOTES</Text>
+                  <Text style={[styles.formLabel, { color: colors.textMuted }]}>ADDITIONAL FARMER NOTES</Text>
                   <TextInput
-                    style={styles.notesInput}
+                    style={[
+                      styles.notesInput,
+                      { backgroundColor: colors.inputBg, color: colors.textPrimary, borderColor: colors.border },
+                    ]}
                     placeholder="e.g., Leaf curl symptoms in Block 3, need recommendation on spray..."
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={colors.textMuted}
                     value={farmerNotes}
                     onChangeText={setFarmerNotes}
                     multiline
@@ -526,21 +621,25 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
                 </View>
 
                 {/* Summary Fee */}
-                <View style={styles.feeSummaryBox}>
+                <View style={[styles.feeSummaryBox, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
                   <View>
-                    <Text style={styles.feeSummaryLabel}>TOTAL CONSULTATION FEE</Text>
-                    <Text style={styles.feeSummaryTitle}>
+                    <Text style={[styles.feeSummaryLabel, { color: colors.textMuted }]}>TOTAL CONSULTATION FEE</Text>
+                    <Text style={[styles.feeSummaryTitle, { color: colors.textPrimary }]}>
                       Includes digital Rx & follow-up chat
                     </Text>
                   </View>
-                  <Text style={styles.feeSummaryAmount}>₹{bookingAgronomist.fee}</Text>
+                  <Text style={[styles.feeSummaryAmount, { color: colors.primary }]}>₹{bookingAgronomist.fee}</Text>
                 </View>
               </ScrollView>
 
               {/* Confirm Button */}
               <View style={styles.modalFooter}>
                 <Pressable
-                  style={[styles.confirmBtn, bookingSuccess && styles.confirmBtnSuccess]}
+                  style={[
+                    styles.confirmBtn,
+                    { backgroundColor: colors.primary },
+                    bookingSuccess && styles.confirmBtnSuccess,
+                  ]}
                   onPress={handleConfirmBooking}
                   disabled={bookingSuccess}
                 >
@@ -661,11 +760,10 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9F5',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -678,30 +776,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#64748B',
     letterSpacing: 0.8,
   },
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1A1C18',
     marginTop: 2,
   },
   headerActionBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   badgeCount: {
     position: 'absolute',
@@ -710,7 +799,6 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#2E7D32',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -722,11 +810,9 @@ const styles = StyleSheet.create({
   },
   switcherPill: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     marginBottom: 16,
   },
   switcherBtn: {
@@ -738,75 +824,44 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
   },
-  switcherBtnActive: {
-    backgroundColor: '#2E7D32',
-  },
+  switcherBtnActive: {},
   switcherBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
-  },
-  switcherBtnTextActive: {
-    color: '#FFFFFF',
   },
   switcherCountBadge: {
-    backgroundColor: '#2E7D32',
     paddingVertical: 1,
     paddingHorizontal: 6,
     borderRadius: 8,
   },
-  switcherCountBadgeActive: {
-    backgroundColor: '#FFFFFF',
-  },
   switcherCountText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'monospace',
-  },
-  switcherCountTextActive: {
-    color: '#2E7D32',
   },
   specialtyCarousel: {
     gap: 8,
+    paddingHorizontal: 20,
     paddingBottom: 4,
     marginBottom: 16,
   },
   specChip: {
-    backgroundColor: '#FFFFFF',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  specChipSelected: {
-    backgroundColor: '#2E7D32',
-    borderColor: '#2E7D32',
   },
   specChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
-  },
-  specChipTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   expertsList: {
     gap: 14,
   },
   expertCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
   },
   expertTopRow: {
     flexDirection: 'row',
@@ -840,12 +895,10 @@ const styles = StyleSheet.create({
   expertName: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1A1C18',
   },
   icarBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 8,
@@ -855,18 +908,15 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   expertTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
     marginTop: 1,
   },
   expertMeta: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#94A3B8',
     marginTop: 2,
   },
   ratingFeeCol: {
@@ -885,28 +935,23 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 9,
     fontFamily: 'monospace',
-    color: '#94A3B8',
   },
   feeAmount: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#2E7D32',
     marginTop: 3,
   },
   feeSub: {
     fontSize: 8,
     fontFamily: 'monospace',
-    color: '#94A3B8',
   },
   bioBox: {
-    backgroundColor: 'rgba(0,0,0,0.02)',
     borderRadius: 14,
     padding: 10,
     marginTop: 12,
   },
   bioText: {
     fontSize: 11,
-    color: '#475569',
     lineHeight: 16,
     fontStyle: 'italic',
   },
@@ -928,10 +973,8 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#94A3B8',
   },
   langPill: {
-    backgroundColor: '#E8F5E9',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 8,
@@ -940,7 +983,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#2E7D32',
   },
   slotRow: {
     flexDirection: 'row',
@@ -951,7 +993,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#2E7D32',
   },
   cardActions: {
     flexDirection: 'row',
@@ -959,14 +1000,12 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   bookCallBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
     paddingVertical: 10,
     borderRadius: 20,
     gap: 6,
@@ -980,16 +1019,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     gap: 4,
   },
   voiceCallBtnText: {
-    color: '#334155',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -997,29 +1033,24 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   emptyBookingsBox: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     borderStyle: 'dashed',
     gap: 8,
   },
   emptyTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#334155',
     marginTop: 8,
   },
   emptySub: {
     fontSize: 12,
-    color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
   },
   browseExpertsBtn: {
-    backgroundColor: '#2E7D32',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 20,
@@ -1031,11 +1062,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   bookingCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     gap: 12,
   },
   bookingCardHeader: {
@@ -1044,7 +1073,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   statusPill: {
-    backgroundColor: '#E8F5E9',
     paddingVertical: 2,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -1054,28 +1082,23 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   bookingAgroName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1A1C18',
     marginTop: 6,
   },
   bookingAgroTitle: {
     fontSize: 11,
-    color: '#64748B',
   },
   paidBadge: {
     fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   bookingDetailsBox: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: 'rgba(0,0,0,0.02)',
     borderRadius: 14,
     padding: 12,
     gap: 12,
@@ -1088,14 +1111,11 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#334155',
   },
   caseAttachmentBox: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
     borderRadius: 14,
     padding: 12,
+    borderWidth: 1,
     gap: 4,
   },
   caseAttachmentHeader: {
@@ -1107,11 +1127,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   caseAttachmentContent: {
     fontSize: 11,
-    color: '#166534',
     lineHeight: 16,
     fontStyle: 'italic',
   },
@@ -1119,7 +1137,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
     paddingVertical: 12,
     borderRadius: 20,
     gap: 8,
@@ -1135,7 +1152,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bookingModalContent: {
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 20,
@@ -1169,19 +1185,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1A1C18',
   },
   modalSub: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#64748B',
     marginTop: 1,
   },
   modalCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1190,7 +1203,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   autoAttachBanner: {
-    backgroundColor: '#E8F5E9',
     borderRadius: 14,
     padding: 12,
     gap: 8,
@@ -1210,25 +1222,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   attachedPill: {
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#2E7D32',
   },
   caseSelectContainer: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
   },
   caseSelectText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1A1C18',
   },
   formSection: {
     marginBottom: 14,
@@ -1237,7 +1244,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '800',
-    color: '#64748B',
     marginBottom: 6,
   },
   modeButtonsRow: {
@@ -1251,21 +1257,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     gap: 4,
   },
-  modeBtnSelected: {
-    backgroundColor: '#2E7D32',
-    borderColor: '#2E7D32',
-  },
+  modeBtnSelected: {},
   modeBtnText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
   },
-  modeBtnTextSelected: {
-    color: '#FFFFFF',
-  },
+  modeBtnTextSelected: {},
   dateButtonsRow: {
     flexDirection: 'row',
     gap: 6,
@@ -1277,20 +1276,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
   },
-  dateBtnSelected: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#2E7D32',
-  },
+  dateBtnSelected: {},
   dateBtnText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
   },
-  dateBtnTextSelected: {
-    color: '#2E7D32',
-  },
+  dateBtnTextSelected: {},
   slotsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1303,56 +1295,40 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
   },
-  slotBtnSelected: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#2E7D32',
-  },
+  slotBtnSelected: {},
   slotBtnText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#475569',
   },
-  slotBtnTextSelected: {
-    color: '#2E7D32',
-    fontWeight: '800',
-  },
+  slotBtnTextSelected: {},
   notesInput: {
-    backgroundColor: 'rgba(0,0,0,0.02)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderWidth: 1.5,
     borderRadius: 14,
     padding: 10,
     fontSize: 12,
-    color: '#1A1C18',
     textAlignVertical: 'top',
   },
   feeSummaryBox: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.02)',
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
   },
   feeSummaryLabel: {
     fontSize: 8,
     fontFamily: 'monospace',
-    color: '#64748B',
   },
   feeSummaryTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1A1C18',
     marginTop: 2,
   },
   feeSummaryAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#2E7D32',
   },
   modalFooter: {
     paddingTop: 10,
@@ -1361,7 +1337,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
     paddingVertical: 14,
     borderRadius: 20,
   },

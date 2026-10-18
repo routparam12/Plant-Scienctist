@@ -29,6 +29,7 @@ import { PATHOLOGY_SPECIMENS } from '../data/mockData';
 import { getUserCrops } from '../services/apiClient';
 import { CropDetailModal } from '../components/CropDetailModal';
 import { t } from '../constants/translations';
+import { useTheme } from '../context/ThemeContext';
 import { THEME } from '../constants/theme';
 
 interface CropScreenProps {
@@ -46,6 +47,7 @@ export const CropScreen: React.FC<CropScreenProps> = ({
   onOpenScanner,
   onOpenAddCrop,
 }) => {
+  const { colors, isDark } = useTheme();
   const [cropsList, setCropsList] = useState<any[]>(
     initialCrops && initialCrops.length > 0 ? initialCrops : []
   );
@@ -61,15 +63,11 @@ export const CropScreen: React.FC<CropScreenProps> = ({
 
   const fetchCrops = useCallback(async () => {
     try {
-      const data = await getUserCrops();
-      if (Array.isArray(data)) {
-        setCropsList(data);
-        if (data.length > 0) {
-          setSelectedCropId((prev) =>
-            prev && data.some((c) => c.id === prev) ? prev : data[0].id
-          );
-        } else {
-          setSelectedCropId(null);
+      const res = await getUserCrops();
+      if (Array.isArray(res)) {
+        setCropsList(res);
+        if (res.length > 0 && !selectedCropId) {
+          setSelectedCropId(res[0].id);
         }
       }
     } catch (e) {
@@ -78,23 +76,22 @@ export const CropScreen: React.FC<CropScreenProps> = ({
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedCropId]);
 
   useEffect(() => {
     fetchCrops();
-  }, [fetchCrops]);
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchCrops();
   };
 
-  const activeCrop = cropsList.find((c) => c.id === selectedCropId) || cropsList[0] || null;
+  const activeCrop = cropsList.find((c) => c.id === selectedCropId) || cropsList[0];
   const stages: CropGrowthStage[] = ['Vegetative', 'Flowering', 'Fruiting', 'Harvesting'];
 
-  const getStageTitle = (crop: any): string => {
-    if (!crop) return 'Vegetative';
-    const key = crop.stage_key || crop.stage || crop.reported_stage || 'vegetative';
+  const getTranslatedStage = (key?: string): string => {
+    if (!key) return 'Vegetative';
     const translationKey = `stage.${key.toLowerCase()}`;
     const translated = t(translationKey, language);
     if (translated !== translationKey) return translated;
@@ -139,7 +136,7 @@ export const CropScreen: React.FC<CropScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -148,18 +145,24 @@ export const CropScreen: React.FC<CropScreenProps> = ({
         {/* 1. Header with Eyebrow and 48px Circular Action */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>DIAGNOSTIC SYSTEM // v2.4</Text>
-            <Text style={styles.title}>{t('crop.headerTitle', language)}</Text>
+            <Text style={[styles.eyebrow, { color: colors.textMuted }]}>DIAGNOSTIC SYSTEM // v2.4</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('crop.headerTitle', language)}</Text>
           </View>
 
-          <Pressable style={styles.headerActionBtn} onPress={onOpenScanner}>
-            <Camera size={20} color={THEME.colors.primary} />
+          <Pressable
+            style={[styles.headerActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={onOpenScanner}
+          >
+            <Camera size={20} color={colors.primary} />
             <View style={styles.pingDot} />
           </Pressable>
         </View>
 
         {/* 2. Hero Scanner Card */}
-        <Pressable style={styles.heroCard} onPress={onOpenScanner}>
+        <Pressable
+          style={[styles.heroCard, { backgroundColor: colors.primary }]}
+          onPress={onOpenScanner}
+        >
           <View style={styles.heroTop}>
             <View style={styles.heroPill}>
               <Sparkles size={13} color="#7CDE3D" />
@@ -176,7 +179,7 @@ export const CropScreen: React.FC<CropScreenProps> = ({
             </Text>
 
             <View style={styles.heroCameraCircle}>
-              <Camera size={20} color="#2E7D32" />
+              <Camera size={20} color={colors.primaryDark} />
             </View>
           </View>
         </Pressable>
@@ -184,29 +187,33 @@ export const CropScreen: React.FC<CropScreenProps> = ({
         {/* 3. Active Portfolio Section */}
         {loading ? (
           <View style={{ marginVertical: 30, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={THEME.colors.primary} />
-            <Text style={{ marginTop: 8, fontSize: 13, color: THEME.colors.textMuted }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={{ marginTop: 8, fontSize: 13, color: colors.textMuted }}>
               Loading crops...
             </Text>
           </View>
         ) : cropsList.length === 0 ? (
           /* Empty Portfolio Card */
-          <View style={styles.emptyPortfolioCard}>
-            <View style={styles.emptyIconBox}>
-              <Leaf size={28} color="#2E7D32" />
+          <View style={[styles.emptyPortfolioCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <View style={[styles.emptyIconBox, { backgroundColor: colors.accentBg }]}>
+              <Leaf size={28} color={colors.primary} />
             </View>
-            <Text style={styles.emptyPortfolioTitle}>{t('crop.emptyTitle', language)}</Text>
-            <Text style={styles.emptyPortfolioSub}>{t('crop.emptySub', language)}</Text>
+            <Text style={[styles.emptyPortfolioTitle, { color: colors.textPrimary }]}>
+              {t('crop.emptyTitle', language)}
+            </Text>
+            <Text style={[styles.emptyPortfolioSub, { color: colors.textSecondary }]}>
+              {t('crop.emptySub', language)}
+            </Text>
 
             <View style={styles.emptyActionRow}>
-              <Pressable style={styles.emptyScanBtn} onPress={onOpenScanner}>
+              <Pressable style={[styles.emptyScanBtn, { backgroundColor: colors.primary }]} onPress={onOpenScanner}>
                 <Camera size={16} color="#FFFFFF" />
                 <Text style={styles.emptyScanBtnText}>{t('scanner.takePhoto', language)}</Text>
               </Pressable>
               {onOpenAddCrop && (
-                <Pressable style={styles.emptyAddBtn} onPress={onOpenAddCrop}>
-                  <Plus size={16} color="#2E7D32" />
-                  <Text style={styles.emptyAddBtnText}>{t('home.addCrop', language)}</Text>
+                <Pressable style={[styles.emptyAddBtn, { backgroundColor: colors.accentBg, borderColor: colors.border }]} onPress={onOpenAddCrop}>
+                  <Plus size={16} color={colors.primary} />
+                  <Text style={[styles.emptyAddBtnText, { color: colors.primary }]}>Add Crop</Text>
                 </Pressable>
               )}
             </View>
@@ -214,15 +221,15 @@ export const CropScreen: React.FC<CropScreenProps> = ({
         ) : (
           <>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Active portfolio</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Active portfolio</Text>
               <View style={styles.portfolioRight}>
                 {onOpenAddCrop && (
                   <Pressable style={styles.addCropBtn} onPress={onOpenAddCrop}>
-                    <Plus size={13} color="#2E7D32" />
-                    <Text style={styles.addCropText}>Add Crop</Text>
+                    <Plus size={13} color={colors.primary} />
+                    <Text style={[styles.addCropText, { color: colors.primary }]}>Add Crop</Text>
                   </Pressable>
                 )}
-                <Text style={styles.plotsBadge}>{cropsList.length} CROPS</Text>
+                <Text style={[styles.plotsBadge, { color: colors.textMuted }]}>{cropsList.length} CROPS</Text>
               </View>
             </View>
 
@@ -236,19 +243,27 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                 return (
                   <Pressable
                     key={crop.id}
-                    style={[styles.cropChip, isSelected && styles.cropChipSelected]}
+                    style={[
+                      styles.cropChip,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ]}
                     onPress={() => setSelectedCropId(crop.id)}
                   >
                     <Text style={styles.cropChipIcon}>{crop.icon || '🌱'}</Text>
                     <Text
-                      style={[styles.cropChipName, isSelected && styles.cropChipNameSelected]}
+                      style={[
+                        styles.cropChipName,
+                        { color: colors.textSecondary },
+                        isSelected && { color: colors.onPrimary || '#FFFFFF', fontWeight: '800' },
+                      ]}
                       numberOfLines={1}
                     >
                       {getLocalizedCropName(crop)}
                     </Text>
                     {crop.acreage ? (
                       <View style={[styles.acreageBadge, isSelected && styles.acreageBadgeSelected]}>
-                        <Text style={[styles.acreageText, isSelected && styles.acreageTextSelected]}>
+                        <Text style={[styles.acreageText, { color: colors.textMuted }, isSelected && styles.acreageTextSelected]}>
                           {crop.acreage}ac
                         </Text>
                       </View>
@@ -260,15 +275,17 @@ export const CropScreen: React.FC<CropScreenProps> = ({
 
             {/* 4. Growth Cycle Timeline Card for Active Crop */}
             {activeCrop && (
-              <View style={styles.timelineCard}>
+              <View style={[styles.timelineCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={styles.timelineTop}>
                   <View style={styles.timelineCropInfo}>
-                    <View style={styles.cropIconBox}>
+                    <View style={[styles.cropIconBox, { backgroundColor: colors.accentBg }]}>
                       <Text style={{ fontSize: 22 }}>{activeCrop.icon || '🌱'}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.activeCropTitle}>{getLocalizedCropName(activeCrop)}</Text>
-                      <Text style={styles.activeCropMeta}>
+                      <Text style={[styles.activeCropTitle, { color: colors.textPrimary }]}>
+                        {getLocalizedCropName(activeCrop)}
+                      </Text>
+                      <Text style={[styles.activeCropMeta, { color: colors.textMuted }]}>
                         {activeCrop.planted_date || activeCrop.plantedDate
                           ? `Planted: ${activeCrop.planted_date || activeCrop.plantedDate}`
                           : t('crop.notPlantedYet', language)}{' '}
@@ -278,21 +295,22 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                   </View>
 
                   <Pressable
-                    style={styles.viewDetailsBtn}
+                    style={[styles.viewDetailsBtn, { backgroundColor: colors.pillBg, borderColor: colors.border }]}
                     onPress={() => handleOpenDetail(activeCrop.id)}
                   >
-                    <Text style={styles.viewDetailsText}>Details →</Text>
+                    <Text style={[styles.viewDetailsText, { color: colors.textPrimary }]}>Details →</Text>
                   </Pressable>
                 </View>
 
-                {/* Progress Bar & Stepper if planted, otherwise notice */}
+                {/* Progress Bar & Stepper if planted */}
                 {(activeCrop.planted_date || activeCrop.plantedDate) ? (
                   <View style={styles.stepperContainer}>
-                    <View style={styles.stepperTrack} />
+                    <View style={[styles.stepperTrack, { backgroundColor: colors.border }]} />
                     <View
                       style={[
                         styles.stepperProgressLine,
                         {
+                          backgroundColor: colors.primary,
                           width: `${Math.max(
                             8,
                             (currentStageIndex / Math.max(1, stages.length - 1)) * 100
@@ -302,36 +320,36 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                     />
 
                     <View style={styles.stepperNodes}>
-                      {stages.map((stg, idx) => {
-                        const isPassed = idx < currentStageIndex;
-                        const isCurrent = idx === currentStageIndex;
-
+                      {stages.map((stg, i) => {
+                        const isCurrent = i === currentStageIndex;
+                        const isPassed = i < currentStageIndex;
                         return (
                           <View key={stg} style={styles.stepperNode}>
                             <View
                               style={[
                                 styles.stepperCircle,
-                                isCurrent && styles.stepperCircleCurrent,
-                                isPassed && styles.stepperCirclePassed,
+                                isPassed && [styles.stepperCirclePassed, { backgroundColor: colors.primary }],
+                                isCurrent && [styles.stepperCircleCurrent, { backgroundColor: colors.primary }],
                               ]}
                             >
-                              <Text
-                                style={[
-                                  styles.stepperNum,
-                                  (isCurrent || isPassed) && styles.stepperNumActive,
-                                ]}
-                              >
-                                {isPassed ? '✓' : idx + 1}
-                              </Text>
+                              {isPassed ? (
+                                <CheckCircle2 size={14} color="#FFFFFF" />
+                              ) : isCurrent ? (
+                                <Circle size={10} color="#FFFFFF" />
+                              ) : (
+                                <Text style={[styles.stepperNum, { color: colors.textMuted }]}>{i + 1}</Text>
+                              )}
                             </View>
                             <Text
                               style={[
                                 styles.stepperLabel,
-                                isCurrent && styles.stepperLabelCurrent,
-                                isPassed && styles.stepperLabelPassed,
+                                { color: colors.textMuted },
+                                isCurrent && [styles.stepperLabelCurrent, { color: colors.primary }],
+                                isPassed && [styles.stepperLabelPassed, { color: colors.textSecondary }],
                               ]}
+                              numberOfLines={1}
                             >
-                              {stg}
+                              {getTranslatedStage(stg)}
                             </Text>
                           </View>
                         );
@@ -339,64 +357,70 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                     </View>
                   </View>
                 ) : (
-                  <Pressable
-                    style={styles.unplantedBanner}
-                    onPress={() => handleOpenDetail(activeCrop.id)}
-                  >
-                    <Calendar size={14} color="#B45309" />
+                  <View style={[styles.unplantedBanner, { backgroundColor: isDark ? '#3D2800' : '#FEF3C7' }]}>
+                    <Calendar size={16} color="#B45309" />
                     <Text style={styles.unplantedBannerText}>
-                      {t('crop.notPlantedYet', language)} — Tap to set date
+                      Set planted date to unlock 4-stage growth progress & care schedules
                     </Text>
-                  </Pressable>
+                  </View>
                 )}
               </View>
             )}
 
-            {/* 5. Actionable Care Tasks */}
+            {/* 5. Field Care Tasks Section */}
             {activeCrop && (
               <View style={styles.tasksSection}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Care tasks</Text>
-
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Field Care Tasks</Text>
                   <View style={styles.taskFilterRow}>
-                    {(['All', 'Spraying', 'Irrigation', 'Fertilization'] as const).map((filter) => {
-                      const isSelected = taskFilter === filter;
-                      return (
-                        <Pressable
-                          key={filter}
-                          style={[styles.taskFilterBtn, isSelected && styles.taskFilterBtnSelected]}
-                          onPress={() => setTaskFilter(filter)}
+                    {(['All', 'Spraying', 'Irrigation', 'Fertilization'] as const).map((filter) => (
+                      <Pressable
+                        key={filter}
+                        style={[
+                          styles.taskFilterBtn,
+                          { backgroundColor: colors.card, borderColor: colors.border },
+                          taskFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ]}
+                        onPress={() => setTaskFilter(filter)}
+                      >
+                        <Text
+                          style={[
+                            styles.taskFilterText,
+                            { color: colors.textSecondary },
+                            taskFilter === filter && { color: colors.onPrimary || '#FFFFFF', fontWeight: '700' },
+                          ]}
                         >
-                          <Text style={[styles.taskFilterText, isSelected && styles.taskFilterTextSelected]}>
-                            {filter === 'Fertilization' ? 'Fertilizer' : filter}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
+                          {filter}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </View>
                 </View>
 
                 {filteredTasks.length === 0 ? (
-                  <View style={styles.emptyTasksBox}>
-                    <Text style={styles.emptyTasksText}>No tasks found for this category.</Text>
+                  <View style={[styles.emptyTasksBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <Text style={[styles.emptyTasksText, { color: colors.textMuted }]}>
+                      No {taskFilter !== 'All' ? taskFilter : ''} tasks pending for this crop
+                    </Text>
                   </View>
                 ) : (
                   filteredTasks.map((task: any) => (
                     <Pressable
                       key={task.id}
-                      style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
+                      style={[
+                        styles.taskCard,
+                        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                        task.completed && styles.taskCardCompleted,
+                      ]}
                       onPress={() => handleToggleTask(activeCrop.id, task.id)}
                     >
-                      <Pressable
-                        style={styles.taskCheckbox}
-                        onPress={() => handleToggleTask(activeCrop.id, task.id)}
-                      >
+                      <View style={styles.taskCheckbox}>
                         {task.completed ? (
-                          <CheckCircle2 size={20} color="#2E7D32" />
+                          <CheckCircle2 size={20} color={colors.primary} />
                         ) : (
-                          <Circle size={20} color="#94A3B8" />
+                          <Circle size={20} color={colors.textMuted} />
                         )}
-                      </Pressable>
+                      </View>
 
                       <View style={{ flex: 1 }}>
                         <View style={styles.taskBadgeRow}>
@@ -423,11 +447,23 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                               {task.priority || 'Medium'} Priority
                             </Text>
                           </View>
-                          <Text style={styles.taskMetaText}>• {task.task_type || task.type || 'Field'}</Text>
-                          {task.dueDate && <Text style={styles.taskMetaText}>• {task.dueDate}</Text>}
+                          <Text style={[styles.taskMetaText, { color: colors.textMuted }]}>
+                            • {task.task_type || task.type || 'Field'}
+                          </Text>
+                          {task.dueDate && (
+                            <Text style={[styles.taskMetaText, { color: colors.textMuted }]}>
+                              • {task.dueDate}
+                            </Text>
+                          )}
                         </View>
 
-                        <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+                        <Text
+                          style={[
+                            styles.taskTitle,
+                            { color: colors.textPrimary },
+                            task.completed && styles.taskTitleCompleted,
+                          ]}
+                        >
                           {getTaskTitle(task)}
                         </Text>
 
@@ -444,22 +480,26 @@ export const CropScreen: React.FC<CropScreenProps> = ({
             )}
           </>
         )}
+
         {/* 6. Pathology Specimen Encyclopedia Section */}
         <View style={styles.pathologySection}>
           <View style={styles.sectionHeaderCol}>
-            <Text style={styles.sectionTitle}>Pathology library</Text>
-            <Text style={styles.sectionSublabel}>VERIFIED ICAR SPECIMENS</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pathology library</Text>
+            <Text style={[styles.sectionSublabel, { color: colors.textMuted }]}>VERIFIED ICAR SPECIMENS</Text>
           </View>
 
           <View style={styles.specimensGrid}>
             {PATHOLOGY_SPECIMENS.map((specimen) => (
               <Pressable
                 key={specimen.id}
-                style={styles.specimenCard}
+                style={[
+                  styles.specimenCard,
+                  { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                ]}
                 onPress={() => setSelectedSpecimen(specimen)}
               >
-                <View style={styles.specimenHeaderBg}>
-                  <View style={styles.specimenIconCircle}>
+                <View style={[styles.specimenHeaderBg, { backgroundColor: colors.pillBg }]}>
+                  <View style={[styles.specimenIconCircle, { backgroundColor: colors.card }]}>
                     <ShieldAlert
                       size={24}
                       color={specimen.severity === 'Severe' ? '#DC2626' : '#D97706'}
@@ -478,16 +518,16 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                 </View>
 
                 <View style={styles.specimenBody}>
-                  <Text style={styles.specimenName} numberOfLines={1}>
+                  <Text style={[styles.specimenName, { color: colors.textPrimary }]} numberOfLines={1}>
                     {specimen.name.split(' (')[0]}
                   </Text>
-                  <Text style={styles.specimenCrop} numberOfLines={1}>
+                  <Text style={[styles.specimenCrop, { color: colors.textMuted }]} numberOfLines={1}>
                     {specimen.crop}
                   </Text>
 
                   <View style={styles.specimenFooter}>
-                    <Text style={styles.remediesBtnText}>Remedies</Text>
-                    <ChevronRight size={14} color="#2E7D32" />
+                    <Text style={[styles.remediesBtnText, { color: colors.primary }]}>Remedies</Text>
+                    <ChevronRight size={14} color={colors.primary} />
                   </View>
                 </View>
               </Pressable>
@@ -505,55 +545,54 @@ export const CropScreen: React.FC<CropScreenProps> = ({
           onRequestClose={() => setSelectedSpecimen(null)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
               <View style={styles.modalHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalEyebrow}>ICAR PATHOLOGY REPORT</Text>
-                  <Text style={styles.modalTitle}>{selectedSpecimen.name}</Text>
-                  <Text style={styles.modalScientific}>{selectedSpecimen.scientificName}</Text>
+                  <Text style={[styles.modalEyebrow, { color: colors.primary }]}>ICAR PATHOLOGY REPORT</Text>
+                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{selectedSpecimen.name}</Text>
+                  <Text style={[styles.modalScientific, { color: colors.textMuted }]}>{selectedSpecimen.scientificName}</Text>
                 </View>
                 <Pressable
-                  style={styles.modalCloseBtn}
+                  style={[styles.modalCloseBtn, { backgroundColor: colors.pillBg }]}
                   onPress={() => setSelectedSpecimen(null)}
                 >
-                  <X size={18} color="#475569" />
+                  <X size={18} color={colors.textMuted} />
                 </Pressable>
               </View>
 
               <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                {/* Description */}
-                <Text style={styles.modalDesc}>{selectedSpecimen.description}</Text>
+                <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>{selectedSpecimen.description}</Text>
 
                 {/* Symptoms */}
-                <View style={styles.remedyBlock}>
+                <View style={[styles.remedyBlock, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
                   <View style={styles.remedyBlockHeader}>
                     <AlertTriangle size={16} color="#DC2626" />
-                    <Text style={styles.remedyBlockTitle}>Diagnostic Symptoms</Text>
+                    <Text style={[styles.remedyBlockTitle, { color: colors.textPrimary }]}>Diagnostic Symptoms</Text>
                   </View>
                   {selectedSpecimen.symptoms.map((s, idx) => (
-                    <Text key={idx} style={styles.remedyItem}>
+                    <Text key={idx} style={[styles.remedyItem, { color: colors.textSecondary }]}>
                       • {s}
                     </Text>
                   ))}
                 </View>
 
                 {/* Organic Remedies */}
-                <View style={styles.remedyBlock}>
+                <View style={[styles.remedyBlock, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
                   <View style={styles.remedyBlockHeader}>
-                    <Leaf size={16} color="#2E7D32" />
-                    <Text style={[styles.remedyBlockTitle, { color: '#2E7D32' }]}>
+                    <Leaf size={16} color={colors.primary} />
+                    <Text style={[styles.remedyBlockTitle, { color: colors.primary }]}>
                       Organic & Biological Control
                     </Text>
                   </View>
                   {selectedSpecimen.organicTreatment.map((s, idx) => (
-                    <Text key={idx} style={styles.remedyItem}>
+                    <Text key={idx} style={[styles.remedyItem, { color: colors.textSecondary }]}>
                       • {s}
                     </Text>
                   ))}
                 </View>
 
                 {/* Chemical Remedies */}
-                <View style={styles.remedyBlock}>
+                <View style={[styles.remedyBlock, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
                   <View style={styles.remedyBlockHeader}>
                     <FlaskConical size={16} color="#D97706" />
                     <Text style={[styles.remedyBlockTitle, { color: '#D97706' }]}>
@@ -561,17 +600,17 @@ export const CropScreen: React.FC<CropScreenProps> = ({
                     </Text>
                   </View>
                   {selectedSpecimen.chemicalTreatment.map((s, idx) => (
-                    <Text key={idx} style={styles.remedyItem}>
+                    <Text key={idx} style={[styles.remedyItem, { color: colors.textSecondary }]}>
                       • {s}
                     </Text>
                   ))}
                 </View>
 
                 {/* Preventive Measures */}
-                <View style={styles.remedyBlock}>
-                  <Text style={styles.remedyBlockTitle}>Preventive Agronomy</Text>
+                <View style={[styles.remedyBlock, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
+                  <Text style={[styles.remedyBlockTitle, { color: colors.textPrimary }]}>Preventive Agronomy</Text>
                   {selectedSpecimen.preventiveMeasures.map((s, idx) => (
-                    <Text key={idx} style={styles.remedyItem}>
+                    <Text key={idx} style={[styles.remedyItem, { color: colors.textSecondary }]}>
                       • {s}
                     </Text>
                   ))}
@@ -579,7 +618,7 @@ export const CropScreen: React.FC<CropScreenProps> = ({
               </ScrollView>
 
               <Pressable
-                style={styles.modalScanBtn}
+                style={[styles.modalScanBtn, { backgroundColor: colors.primary }]}
                 onPress={() => {
                   setSelectedSpecimen(null);
                   onOpenScanner();
@@ -611,24 +650,16 @@ export const CropScreen: React.FC<CropScreenProps> = ({
 
 const styles = StyleSheet.create({
   emptyPortfolioCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8DE',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   emptyIconBox: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -636,13 +667,11 @@ const styles = StyleSheet.create({
   emptyPortfolioTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#1A1C18',
     textAlign: 'center',
     marginBottom: 6,
   },
   emptyPortfolioSub: {
     fontSize: 13,
-    color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 16,
@@ -655,7 +684,6 @@ const styles = StyleSheet.create({
   emptyScanBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2E7D32',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -669,36 +697,29 @@ const styles = StyleSheet.create({
   emptyAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.2)',
     gap: 6,
   },
   emptyAddBtnText: {
-    color: '#2E7D32',
     fontSize: 13,
     fontWeight: '700',
   },
   viewDetailsBtn: {
     paddingVertical: 5,
     paddingHorizontal: 10,
-    backgroundColor: '#F1F5F9',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
   },
   viewDetailsText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
   },
   unplantedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
     borderRadius: 10,
     padding: 10,
     gap: 8,
@@ -712,11 +733,10 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#F7F9F5',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -729,30 +749,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#64748B',
     letterSpacing: 0.8,
   },
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1A1C18',
     marginTop: 2,
   },
   headerActionBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   pingDot: {
     position: 'absolute',
@@ -764,15 +775,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E7D32',
   },
   heroCard: {
-    backgroundColor: '#2E7D32',
     borderRadius: 28,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#2E7D32',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
   },
   heroTop: {
     flexDirection: 'row',
@@ -826,11 +831,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -844,13 +844,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#1A1C18',
   },
   sectionSublabel: {
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#64748B',
     marginTop: 2,
   },
   portfolioRight: {
@@ -866,13 +864,11 @@ const styles = StyleSheet.create({
   addCropText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#2E7D32',
     fontFamily: 'monospace',
   },
   plotsBadge: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#64748B',
     fontWeight: '600',
   },
   cropCarousel: {
@@ -883,17 +879,11 @@ const styles = StyleSheet.create({
   cropChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     gap: 6,
-  },
-  cropChipSelected: {
-    backgroundColor: '#2E7D32',
-    borderColor: '#2E7D32',
   },
   cropChipIcon: {
     fontSize: 14,
@@ -901,10 +891,6 @@ const styles = StyleSheet.create({
   cropChipName: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
-  },
-  cropChipNameSelected: {
-    color: '#FFFFFF',
   },
   acreageBadge: {
     backgroundColor: 'rgba(0,0,0,0.05)',
@@ -919,23 +905,15 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#64748B',
   },
   acreageTextSelected: {
     color: '#FFFFFF',
   },
   timelineCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
   },
   timelineTop: {
     flexDirection: 'row',
@@ -952,34 +930,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeCropTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1A1C18',
   },
   activeCropMeta: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#64748B',
     marginTop: 2,
-  },
-  stagePill: {
-    backgroundColor: '#E8F5E9',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.15)',
-  },
-  stagePillText: {
-    fontSize: 10,
-    fontFamily: 'monospace',
-    fontWeight: '700',
-    color: '#2E7D32',
   },
   stepperContainer: {
     position: 'relative',
@@ -991,7 +952,6 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: 2,
-    backgroundColor: 'rgba(0,0,0,0.06)',
     borderRadius: 1,
   },
   stepperProgressLine: {
@@ -999,7 +959,6 @@ const styles = StyleSheet.create({
     top: 22,
     left: 20,
     height: 2,
-    backgroundColor: '#2E7D32',
     borderRadius: 1,
   },
   stepperNodes: {
@@ -1020,34 +979,24 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   stepperCircleCurrent: {
-    backgroundColor: '#2E7D32',
     borderWidth: 3,
     borderColor: '#DCFCE7',
     transform: [{ scale: 1.15 }],
   },
-  stepperCirclePassed: {
-    backgroundColor: '#2E7D32',
-  },
+  stepperCirclePassed: {},
   stepperNum: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#94A3B8',
-  },
-  stepperNumActive: {
-    color: '#FFFFFF',
   },
   stepperLabel: {
     fontSize: 9,
     fontFamily: 'monospace',
-    color: '#94A3B8',
     textAlign: 'center',
   },
   stepperLabelCurrent: {
-    color: '#2E7D32',
     fontWeight: '800',
   },
   stepperLabelPassed: {
-    color: '#334155',
     fontWeight: '600',
   },
   tasksSection: {
@@ -1061,49 +1010,32 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  taskFilterBtnSelected: {
-    backgroundColor: '#2E7D32',
-    borderColor: '#2E7D32',
   },
   taskFilterText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#64748B',
-  },
-  taskFilterTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   emptyTasksBox: {
     padding: 24,
-    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     borderStyle: 'dashed',
     alignItems: 'center',
   },
   emptyTasksText: {
     fontSize: 12,
-    color: '#94A3B8',
   },
   taskCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     marginBottom: 10,
     gap: 10,
   },
   taskCardCompleted: {
-    backgroundColor: 'rgba(0,0,0,0.02)',
     opacity: 0.6,
   },
   taskCheckbox: {
@@ -1146,17 +1078,14 @@ const styles = StyleSheet.create({
   taskMetaText: {
     fontSize: 9,
     fontFamily: 'monospace',
-    color: '#94A3B8',
   },
   taskTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1A1C18',
     lineHeight: 18,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: '#94A3B8',
   },
   taskNotesBox: {
     backgroundColor: '#FFFBEB',
@@ -1181,15 +1110,12 @@ const styles = StyleSheet.create({
   },
   specimenCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
   },
   specimenHeaderBg: {
     height: 90,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1198,7 +1124,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1228,12 +1153,10 @@ const styles = StyleSheet.create({
   specimenName: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#1A1C18',
   },
   specimenCrop: {
     fontSize: 10,
     fontFamily: 'monospace',
-    color: '#64748B',
     fontStyle: 'italic',
     marginTop: 2,
   },
@@ -1247,7 +1170,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#2E7D32',
   },
   modalOverlay: {
     flex: 1,
@@ -1255,7 +1177,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 20,
@@ -1273,25 +1194,21 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#2E7D32',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1C18',
     marginTop: 2,
   },
   modalScientific: {
     fontSize: 11,
     fontStyle: 'italic',
-    color: '#64748B',
     marginTop: 1,
   },
   modalCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1301,16 +1218,13 @@ const styles = StyleSheet.create({
   },
   modalDesc: {
     fontSize: 12,
-    color: '#334155',
     lineHeight: 18,
     marginBottom: 14,
   },
   remedyBlock: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
     marginBottom: 10,
   },
   remedyBlockHeader: {
@@ -1322,11 +1236,9 @@ const styles = StyleSheet.create({
   remedyBlockTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#1E293B',
   },
   remedyItem: {
     fontSize: 11,
-    color: '#475569',
     lineHeight: 17,
     marginTop: 4,
   },
@@ -1334,7 +1246,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
     paddingVertical: 14,
     borderRadius: 16,
   },

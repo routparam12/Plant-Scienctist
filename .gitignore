@@ -1,19 +1,107 @@
-# Python-generated files
+# ==========================================
+# Plant Scientist - Root Git Ignore
+# ==========================================
+
+# ─── IDEs & Code Editors ───
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ─── AI Assistants & Tooling ───
+.claude/
+**/.claude/
+.gemini/
+**/.gemini/
+.cursor/
+**/.cursor/
+.windsurf/
+**/.windsurf/
+.agents/
+**/.agents/
+
+# ─── Environment Variables & Credentials ───
+.env
+.env.*
+!.env.example
+!.env.template
+Backend/.env
+mobile-app/.env.local
+mobile-app/.env.*.local
+*.pem
+*.key
+
+# ─── Python Build, Cache & Environments ───
 __pycache__/
-*.py[oc]
+**/*/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+**/*.egg-info/
 build/
 dist/
 wheels/
-*.egg-info
+*.egg
+.venv/
+**/.venv/
+env/
+venv/
+ENV/
+.pytest_cache/
+**/.pytest_cache/
+.ruff_cache/
+**/.ruff_cache/
+.mypy_cache/
+**/.mypy_cache/
+.coverage
+htmlcov/
 
-# Virtual environments
-.venv
-.idea
+# ─── Node, React Native & Mobile (Expo) ───
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/
+web-build/
+dist/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.metro-health-check*
+*.tsbuildinfo
+expo-env.d.ts
 
-Backend/.env
-Backend/.idea
+# ─── Native Mobile Builds & Keys ───
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+mobile-app/ios/
+mobile-app/android/
 
-backend/.idea
-backend/.venv
+# ─── Audio / Generated Test Media Artifacts ───
+*.mp3
+*.wav
+*.m4a
+*.webm
+*.ogg
 
-backend/node_modules
+# ─── OS & Temporary Files ───
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+*.log
+logs/
+*.tmp
+*.temp

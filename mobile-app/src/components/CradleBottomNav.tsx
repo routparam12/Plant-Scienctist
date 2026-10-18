@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import { Sprout, Stethoscope, Camera, Calendar, User, Mic } from 'lucide-react-native';
+import { Sprout, Stethoscope, Camera, Calendar, User } from 'lucide-react-native';
 import { AppLanguage, TabType } from '../types';
 import { t } from '../constants/translations';
 import { useTheme } from '../context/ThemeContext';
@@ -18,7 +18,6 @@ export const CradleBottomNav: React.FC<CradleBottomNavProps> = ({
   language = 'en',
   onTabChange,
   onOpenScanner,
-  onOpenVoice,
 }) => {
   const { colors, isDark } = useTheme();
 
@@ -125,17 +124,6 @@ export const CradleBottomNav: React.FC<CradleBottomNavProps> = ({
         </Pressable>
         <Text style={[styles.fabLabel, { color: colors.primary }]}>Scan Plant</Text>
       </View>
-
-      {/* Floating Voice Assistant Trigger */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.voiceFab,
-          pressed && styles.voiceFabPressed,
-        ]}
-        onPress={onOpenVoice}
-      >
-        <Mic size={20} color="#FFFFFF" />
-      </Pressable>
     </View>
   );
 };
@@ -216,31 +204,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginTop: 2,
-  },
-  voiceFab: {
-    position: 'absolute',
-    bottom: 76,
-    right: 18,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F59E0B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.35,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  voiceFabPressed: {
-    transform: [{ scale: 0.93 }],
-    backgroundColor: '#D97706',
   },
 });

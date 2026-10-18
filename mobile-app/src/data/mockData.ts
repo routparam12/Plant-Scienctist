@@ -406,7 +406,7 @@ export const INITIAL_BOOKINGS: ConsultationBooking[] = [
     date: 'Tomorrow, Oct 16',
     timeSlot: '11:00 AM - 11:30 AM',
     type: 'Video Call',
-    crop: 'Tomato (Abhinav) • Block 3',
+    crop: 'Tomato  • Block 3',
     fee: 250,
     status: 'Confirmed',
     createdAt: '2026-10-15',

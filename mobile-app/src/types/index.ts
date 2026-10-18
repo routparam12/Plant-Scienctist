@@ -1,4 +1,4 @@
-export type AppLanguage = 'en' | 'hi' | 'mr';
+export type AppLanguage = 'en' | 'hi';
 
 export type AppTheme = 'light' | 'dark' | 'system';
 

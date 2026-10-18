@@ -41,6 +41,8 @@ async def transcribe_audio_endpoint(
             "language": detected_lang,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -135,6 +137,8 @@ async def plant_voice_query_endpoint(
             "plant_response": plant_response,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,

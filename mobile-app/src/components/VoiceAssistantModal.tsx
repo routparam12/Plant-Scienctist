@@ -55,7 +55,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       const result = await queryVoiceAssistant(sampleAudioUri, false);
 
       setTranscription(result.transcription || result.transcript || 'Voice query received');
-      setAiResponse(result.answer || result.response || result.reply || 'AI Assistant response');
+      setAiResponse(result.plant_response || result.answer || result.response || result.reply || 'AI Assistant response');
     } catch (err: any) {
       // Direct error state display - NO MOCK FALLBACK
       setErrorMsg(

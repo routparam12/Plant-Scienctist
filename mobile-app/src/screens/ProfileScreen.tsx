@@ -25,6 +25,7 @@ import {
   LogIn,
   Smartphone,
   Edit3,
+  ShieldCheck,
   X,
   Check,
 } from 'lucide-react-native';
@@ -242,13 +243,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* 2. Farmer Identity Profile Card */}
         <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.profileTopRow}>
-            {/* Avatar with Lavender Badge */}
+            {/* Avatar with ShieldCheck Badge */}
             <View style={styles.avatarContainer}>
               <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                 <Text style={styles.avatarText}>{getInitials(profile.name, profile.email)}</Text>
               </View>
-              <View style={styles.lavenderBadge}>
-                <Text style={{ fontSize: 11 }}>🪻</Text>
+              <View style={[styles.verifiedBadgeCircle, { backgroundColor: colors.primary }]}>
+                <ShieldCheck size={12} color="#FFFFFF" />
               </View>
             </View>
 
@@ -335,9 +336,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <View style={styles.buttonOptionsRow}>
             {(
               [
-                { id: 'light', label: 'Light ☀️', Icon: Sun },
-                { id: 'dark', label: 'Dark 🌙', Icon: Moon },
-                { id: 'system', label: 'System ⚙️', Icon: Laptop },
+                { id: 'light', label: 'Light', Icon: Sun },
+                { id: 'dark', label: 'Dark', Icon: Moon },
+                { id: 'system', label: 'System', Icon: Laptop },
               ] as const
             ).map((item) => {
               const isSelected = theme === item.id;
@@ -682,7 +683,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -747,16 +748,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  lavenderBadge: {
+  verifiedBadgeCircle: {
     position: 'absolute',
     bottom: -4,
     right: -4,
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#EDE9FE',
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
