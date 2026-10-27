@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -19,6 +19,7 @@ import {
   Info,
   Thermometer,
   Layers,
+  Calendar,
 } from 'lucide-react-native';
 import { WeatherPayload } from '../services/weatherService';
 import { AppLanguage } from '../types';
@@ -34,6 +35,17 @@ interface WeatherAdvisoryModalProps {
   onClose: () => void;
 }
 
+function getWMOConditionLabel(code: number, lang: AppLanguage = 'en'): string {
+  if (code === 0) return lang === 'hi' ? 'साफ आसमान' : 'Clear Sky';
+  if (code >= 1 && code <= 3) return lang === 'hi' ? 'आंशिक रूप से बादल' : 'Partly Cloudy';
+  if (code >= 45 && code <= 48) return lang === 'hi' ? 'कोहरा' : 'Foggy';
+  if (code >= 51 && code <= 57) return lang === 'hi' ? 'हल्की बूंदाबांदी' : 'Light Drizzle';
+  if (code >= 61 && code <= 67) return lang === 'hi' ? 'मध्यम वर्षा' : 'Moderate Rain';
+  if (code >= 80 && code <= 82) return lang === 'hi' ? 'वर्षा की बौछारें' : 'Rain Showers';
+  if (code >= 95) return lang === 'hi' ? 'गरज के साथ बारिश' : 'Thunderstorm';
+  return lang === 'hi' ? 'आंशिक रूप से बादल' : 'Partly Cloudy';
+}
+
 export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
   visible,
   language = 'en',
@@ -44,10 +56,53 @@ export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
   onClose,
 }) => {
   const { colors, isDark } = useTheme();
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
+
+  useEffect(() => {
+    if (visible && weatherData?.dailyForecasts?.length) {
+      // Default to first high-risk rain day or today (0)
+      const highRiskIdx = weatherData.dailyForecasts.findIndex((df) => df.rainProb >= 50);
+      setSelectedDayIdx(highRiskIdx >= 0 ? highRiskIdx : 0);
+    }
+  }, [visible, weatherData]);
 
   if (!weatherData) return null;
 
-  const isRainyAlert = weatherData.maxRainProb >= 50;
+  const dailyForecasts = weatherData.dailyForecasts || [];
+  const selectedDay = dailyForecasts[selectedDayIdx] || dailyForecasts[0] || {
+    day: 'M',
+    fullDayName: 'Today',
+    dateStr: '',
+    rainProb: weatherData.maxRainProb,
+    precipitationMm: 0,
+    maxTemp: weatherData.temperature,
+    minTemp: weatherData.temperature - 8,
+    isHighRisk: weatherData.maxRainProb >= 50,
+    weatherCode: weatherData.weatherCode,
+  };
+
+  const isSelectedRainy = selectedDay.rainProb >= 50;
+  const conditionText = getWMOConditionLabel(selectedDay.weatherCode, language);
+
+  // Dynamic Spray Advisory Headline & Subheadline for Selected Day
+  let dayHeadline = '';
+  let daySubheadline = '';
+
+  if (isSelectedRainy) {
+    dayHeadline = language === 'hi'
+      ? `${selectedDay.fullDayName} को बारिश की संभावना (${selectedDay.rainProb}%)। छिड़काव स्थगित करें।`
+      : `Rain expected on ${selectedDay.fullDayName} (${selectedDay.rainProb}% prob). Delay foliar spray.`;
+    daySubheadline = language === 'hi'
+      ? `राडार चेतावनी: ${selectedDay.precipitationMm || 5} मिमी वर्षा का अनुमान। छिड़काव से रसायन बहने का जोखिम।`
+      : `Radar alert: ${selectedDay.precipitationMm || 5}mm expected precipitation on ${selectedDay.fullDayName}. Spraying may result in chemical wash-off.`;
+  } else {
+    dayHeadline = language === 'hi'
+      ? `${selectedDay.fullDayName} को उत्तम छिड़काव का समय। कम वर्षा जोखिम (${selectedDay.rainProb}%)।`
+      : `Ideal Spraying Window on ${selectedDay.fullDayName}. Low rain risk (${selectedDay.rainProb}%).`;
+    daySubheadline = language === 'hi'
+      ? `अनुकूल मौसम: घोल के अवशोषण के लिए बेहतरीन स्थितियां।`
+      : `Clear skies with low rain risk. Excellent absorption window for foliar sprays.`;
+  }
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -99,19 +154,24 @@ export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
           </View>
 
           <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
-            {/* Live Weather Metrics Header Card */}
+            {/* Live Weather Metrics Header Card for Selected Day */}
             <View style={[styles.liveMetricsCard, { backgroundColor: colors.pillBg, borderColor: colors.border }]}>
               <View style={styles.liveTempRow}>
                 <View>
-                  <Text style={[styles.liveTempText, { color: colors.textPrimary }]}>
-                    {weatherData.temperature}°C
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                    <Text style={[styles.liveTempText, { color: colors.textPrimary }]}>
+                      {selectedDay.maxTemp}°C
+                    </Text>
+                    <Text style={[styles.dayBadgeText, { color: colors.primary }]}>
+                      • {selectedDay.fullDayName}
+                    </Text>
+                  </View>
                   <Text style={[styles.liveConditionText, { color: colors.textSecondary }]}>
-                    {weatherData.conditionLabel}
+                    {conditionText} • Low {selectedDay.minTemp}°C
                   </Text>
                 </View>
                 <Text style={{ fontSize: 38 }}>
-                  {isRainyAlert ? '🌧️' : '⛅'}
+                  {isSelectedRainy ? '🌧️' : selectedDay.rainProb >= 25 ? '⛅' : '☀️'}
                 </Text>
               </View>
 
@@ -119,7 +179,13 @@ export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
                 <View style={styles.metricItem}>
                   <Droplet size={14} color="#2563EB" />
                   <Text style={[styles.metricText, { color: colors.textSecondary }]}>
-                    Humidity {weatherData.humidity}%
+                    Rain Prob {selectedDay.rainProb}%
+                  </Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <CloudRain size={14} color="#2563EB" />
+                  <Text style={[styles.metricText, { color: colors.textSecondary }]}>
+                    Precip {selectedDay.precipitationMm} mm
                   </Text>
                 </View>
                 <View style={styles.metricItem}>
@@ -134,31 +200,25 @@ export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
                     Soil {weatherData.soilTemperature}°C
                   </Text>
                 </View>
-                <View style={styles.metricItem}>
-                  <Layers size={14} color="#8B5CF6" />
-                  <Text style={[styles.metricText, { color: colors.textSecondary }]}>
-                    Moisture {weatherData.soilMoisture} m³/m³
-                  </Text>
-                </View>
               </View>
             </View>
 
-            {/* Detailed Blue Spray Advisory Box */}
+            {/* Detailed Blue Spray Advisory Box for Selected Day */}
             <View style={styles.sprayBanner}>
               <View style={styles.sprayBannerTop}>
                 <View style={styles.rainBadge}>
                   <CloudRain size={14} color="#1D4ED8" />
                   <Text style={styles.rainBadgeText}>
-                    {isRainyAlert
-                      ? `Rain Alert (${weatherData.maxRainProb}% prob)`
+                    {isSelectedRainy
+                      ? `Rain Alert (${selectedDay.rainProb}% prob)`
                       : 'Optimal Spray Window'}
                   </Text>
                 </View>
                 <Text style={styles.sprayCropBadge}>{activeCropName} • Crop Care</Text>
               </View>
 
-              <Text style={styles.sprayHeadline}>{weatherData.sprayHeadline}</Text>
-              <Text style={styles.spraySubheadline}>{weatherData.spraySubheadline}</Text>
+              <Text style={styles.sprayHeadline}>{dayHeadline}</Text>
+              <Text style={styles.spraySubheadline}>{daySubheadline}</Text>
 
               {/* Treatment Dosage Recommendations */}
               <View style={styles.dosageBlock}>
@@ -177,41 +237,68 @@ export const WeatherAdvisoryModal: React.FC<WeatherAdvisoryModalProps> = ({
               </View>
             </View>
 
-            {/* 7-Day Rain & Spray Calendar (M T W T F S S) */}
-            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
-              {language === 'hi' ? '7-दिवसीय वर्षा पूर्वानुमान व स्प्रे कैलेंडर' : '7-Day Rain & Spray Calendar'}
-            </Text>
+            {/* Interactive 7-Day Rain & Spray Calendar */}
+            <View style={styles.calendarHeaderRow}>
+              <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
+                {language === 'hi' ? '7-दिवसीय वर्षा पूर्वानुमान व स्प्रे कैलेंडर' : '7-Day Rain & Spray Calendar'}
+              </Text>
+              <Text style={[styles.tapHintText, { color: colors.primary }]}>
+                {language === 'hi' ? 'दिन पर टैप करें →' : 'Tap day to view →'}
+              </Text>
+            </View>
 
             <View style={styles.calendarGrid}>
-              {weatherData.dailyForecasts.map((df, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.dayBox,
-                    { backgroundColor: colors.pillBg, borderColor: colors.border },
-                    df.isHighRisk && styles.dayBoxHighlight,
-                  ]}
-                >
-                  <Text style={[styles.dayName, df.isHighRisk && styles.dayTextHighlight]}>
-                    {df.day}
-                  </Text>
-                  <Text style={{ fontSize: 16, marginVertical: 4 }}>
-                    {df.isHighRisk ? '🌧️' : '☀️'}
-                  </Text>
-                  <Text style={[styles.dayRain, df.isHighRisk && styles.dayRainHighlight]}>
-                    {df.rainProb}%
-                  </Text>
-                  <Text
+              {dailyForecasts.map((df, idx) => {
+                const isSelected = idx === selectedDayIdx;
+                const isHighRisk = df.rainProb >= 50;
+
+                return (
+                  <Pressable
+                    key={idx}
                     style={[
-                      styles.dayTemp,
-                      { color: colors.textMuted },
-                      df.isHighRisk && { color: '#BFDBFE' },
+                      styles.dayBox,
+                      { backgroundColor: colors.pillBg, borderColor: colors.border },
+                      isHighRisk && styles.dayBoxHighRisk,
+                      isSelected && [styles.dayBoxSelected, { backgroundColor: colors.primary, borderColor: colors.primary }],
                     ]}
+                    onPress={() => setSelectedDayIdx(idx)}
                   >
-                    {df.maxTemp}°
-                  </Text>
-                </View>
-              ))}
+                    <Text
+                      style={[
+                        styles.dayName,
+                        { color: colors.textPrimary },
+                        isHighRisk && styles.dayNameHighRisk,
+                        isSelected && { color: '#FFFFFF', fontWeight: '800' },
+                      ]}
+                    >
+                      {df.day}
+                    </Text>
+                    <Text style={{ fontSize: 16, marginVertical: 4 }}>
+                      {df.rainProb >= 50 ? '🌧️' : df.rainProb >= 25 ? '⛅' : '☀️'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.dayRain,
+                        { color: colors.textSecondary },
+                        isHighRisk && styles.dayRainHighRisk,
+                        isSelected && { color: '#FFFFFF', fontWeight: '800' },
+                      ]}
+                    >
+                      {df.rainProb}%
+                    </Text>
+                    <Text
+                      style={[
+                        styles.dayTemp,
+                        { color: colors.textMuted },
+                        isHighRisk && { color: '#BFDBFE' },
+                        isSelected && { color: 'rgba(255,255,255,0.85)' },
+                      ]}
+                    >
+                      {df.maxTemp}°
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             {/* Advisory Compliance Disclaimer Note */}
@@ -315,6 +402,10 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
   },
+  dayBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   liveConditionText: {
     fontSize: 13,
     fontWeight: '600',
@@ -401,10 +492,19 @@ const styles = StyleSheet.create({
     color: '#1E3A8A',
     lineHeight: 16,
   },
+  calendarHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   sectionHeading: {
     fontSize: 14,
     fontWeight: '800',
-    marginBottom: 10,
+  },
+  tapHintText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -416,29 +516,30 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     flex: 1,
     marginHorizontal: 2,
   },
-  dayBoxHighlight: {
-    backgroundColor: '#0047FF',
-    borderColor: '#0047FF',
+  dayBoxHighRisk: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
+  },
+  dayBoxSelected: {
+    transform: [{ scale: 1.05 }],
   },
   dayName: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1E3A8A',
   },
-  dayTextHighlight: {
-    color: '#FFFFFF',
+  dayNameHighRisk: {
+    color: '#1D4ED8',
   },
   dayRain: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#3B82F6',
   },
-  dayRainHighlight: {
-    color: '#BFDBFE',
+  dayRainHighRisk: {
+    color: '#1D4ED8',
   },
   dayTemp: {
     fontSize: 9,

@@ -1,3 +1,5 @@
+#backend\app\voice_module\stt.py
+
 import asyncio
 import io
 import os
@@ -104,17 +106,31 @@ class SpeechToText:
         # Frontend audio input: Path, bytes, or file stream
         temp_audio_path = None
         try:
+            def _detect_audio_suffix(sample: bytes) -> str:
+                if len(sample) >= 12 and b"ftyp" in sample[:12]:
+                    return ".m4a"
+                if sample.startswith(b"RIFF"):
+                    return ".wav"
+                if sample.startswith(b"ID3") or sample.startswith(b"\xff\xfb") or sample.startswith(b"\xff\xf3"):
+                    return ".mp3"
+                if sample.startswith(b"\x1a\x45\xdf\xa3"):
+                    return ".webm"
+                return ".m4a"
+
             if isinstance(audio_source, (bytes, bytearray)):
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                suffix = _detect_audio_suffix(bytes(audio_source[:32]))
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
                 temp_file.write(audio_source)
                 temp_file.flush()
                 temp_file.close()
                 audio_path = temp_file.name
                 temp_audio_path = temp_file.name
             elif isinstance(audio_source, (io.BytesIO, io.BufferedReader, io.RawIOBase)):
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
                 audio_source.seek(0)
-                temp_file.write(audio_source.read())
+                raw_bytes = audio_source.read()
+                suffix = _detect_audio_suffix(raw_bytes[:32]) if raw_bytes else ".m4a"
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                temp_file.write(raw_bytes)
                 temp_file.flush()
                 temp_file.close()
                 audio_path = temp_file.name
@@ -128,28 +144,35 @@ class SpeechToText:
 
             # Primary: Whisper (Handles MP3, WAV, WEBM, M4A with language detection)
             if whisper is not None:
-                segments, info = whisper.transcribe(
-                    audio_path,
-                    language=language,
-                    vad_filter=True,
-                )
-                text = " ".join(seg.text.strip() for seg in segments).strip()
-                detected_lang = info.language
-                return text, detected_lang
+                try:
+                    segments, info = whisper.transcribe(
+                        audio_path,
+                        language=language,
+                        vad_filter=True,
+                    )
+                    text = " ".join(seg.text.strip() for seg in segments).strip()
+                    detected_lang = info.language
+                    return text, detected_lang
+                except Exception as whisper_err:
+                    print(f"Whisper decode warning: {whisper_err}")
+
 
             # Fallback: speech_recognition using Google API
             recognizer = self._get_sr()
             if recognizer is not None:
-                with sr.AudioFile(audio_path) as source:
-                    audio_data = recognizer.record(source)
-                    lang_code = "hi-IN" if language == "hi" else "en-US"
-                    try:
-                        text = recognizer.recognize_google(audio_data, language=lang_code)
-                        return text, language or "hi"
-                    except sr.UnknownValueError:
-                        return "", language or "unknown"
+                try:
+                    with sr.AudioFile(audio_path) as source:
+                        audio_data = recognizer.record(source)
+                        lang_code = "hi-IN" if language == "hi" else "en-US"
+                        try:
+                            text = recognizer.recognize_google(audio_data, language=lang_code)
+                            return text, language or "hi"
+                        except sr.UnknownValueError:
+                            return "", language or "unknown"
+                except Exception as sr_err:
+                    print(f"Fallback SR decode warning: {sr_err}")
 
-            raise RuntimeError("No STT engine available. Install faster-whisper or speechrecognition.")
+            return "", language or "unknown"
 
         finally:
             if temp_audio_path and os.path.exists(temp_audio_path):

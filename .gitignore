@@ -2,6 +2,153 @@
 # Plant Scientist - Root Git Ignore
 # ==========================================
 
+# ─── Environment Variables & Secrets ───
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+!.env.example
+!.env.template
+Backend/.env
+mobile-app/.env.local
+mobile-app/.env.*.local
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# ─── Runtime Uploads, Media Storage & Diagnostic Files ───
+uploads/
+**/uploads/
+**/uploads/**
+!**/uploads/.gitkeep
+storage/
+**/storage/
+recordings/
+**/recordings/
+media/
+**/media/
+!mobile-app/src/**/media/
+
+# ─── Audio, Video & Generated Test Artifacts ───
+*.mp3
+*.wav
+*.m4a
+*.webm
+*.ogg
+*.aac
+*.flac
+*.mp4
+*.mov
+*.avi
+*.mkv
+# Preserve static production assets
+!mobile-app/assets/**
+!assets/**
+
+# ─── Python Build, Cache & Virtual Environments ───
+__pycache__/
+**/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+**/*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+**/.venv/
+env/
+venv/
+ENV/
+.uv/
+**/.uv/
+.pytest_cache/
+**/.pytest_cache/
+.ruff_cache/
+**/.ruff_cache/
+.mypy_cache/
+**/.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# ─── Databases & Local DB Caches ───
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ─── Node, React Native & Mobile (Expo) ───
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/
+.expo-shared/
+**/.expo-shared/
+web-build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.metro-health-check*
+*.tsbuildinfo
+expo-env.d.ts
+
+# ─── Native Mobile Builds & Keystores ───
+*.apk
+*.aab
+*.ipa
+*.ap_
+*.dex
+*.class
+*.jks
+*.keystore
+*.p8
+*.mobileprovision
+.kotlin/
+*.orig.*
+
+# Android native build directories
+android/
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/captures/
+**/android/local.properties
+mobile-app/android/
+local.properties
+
+# iOS native build directories
+ios/
+**/ios/Pods/
+**/ios/build/
+**/ios/*.xcworkspace/
+**/ios/*.xcodeproj/xcuserdata/
+mobile-app/ios/
+
 # ─── IDEs & Code Editors ───
 .idea/
 **/.idea/
@@ -24,73 +171,8 @@
 **/.windsurf/
 .agents/
 **/.agents/
-
-# ─── Environment Variables & Credentials ───
-.env
-.env.*
-!.env.example
-!.env.template
-Backend/.env
-mobile-app/.env.local
-mobile-app/.env.*.local
-*.pem
-*.key
-
-# ─── Python Build, Cache & Environments ───
-__pycache__/
-**/*/__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-**/*.egg-info/
-build/
-dist/
-wheels/
-*.egg
-.venv/
-**/.venv/
-env/
-venv/
-ENV/
-.pytest_cache/
-**/.pytest_cache/
-.ruff_cache/
-**/.ruff_cache/
-.mypy_cache/
-**/.mypy_cache/
-.coverage
-htmlcov/
-
-# ─── Node, React Native & Mobile (Expo) ───
-node_modules/
-**/node_modules/
-.expo/
-**/.expo/
-web-build/
-dist/
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-.metro-health-check*
-*.tsbuildinfo
-expo-env.d.ts
-
-# ─── Native Mobile Builds & Keys ───
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.mobileprovision
-mobile-app/ios/
-mobile-app/android/
-
-# ─── Audio / Generated Test Media Artifacts ───
-*.mp3
-*.wav
-*.m4a
-*.webm
-*.ogg
+scratch/
+**/scratch/
 
 # ─── OS & Temporary Files ───
 .DS_Store
@@ -103,5 +185,6 @@ Thumbs.db
 [Dd]esktop.ini
 *.log
 logs/
+**/logs/
 *.tmp
 *.temp

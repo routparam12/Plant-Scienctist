@@ -135,19 +135,39 @@ class DiagnosisService:
         """
         Runs ICAR-calibrated diagnostic analysis using Gemini multimodal vision.
         Falls back seamlessly to local plant pathology specimen intelligence if API is unavailable.
+        Traced with Langfuse: captures vision prompt, model, tokens, disease name, and confidence.
         """
-        ai = self._get_ai_client()
-        result_dict: Optional[Dict[str, Any]] = None
+        from langfuse import get_client, propagate_attributes
+        langfuse_client = get_client()
 
-        lang_instruction = (
-            "Provide disease name and symptoms in Hindi (Devanagari script) alongside English."
-            if language == "hi"
-            else "Provide response in Marathi alongside English."
-            if language == "mr"
-            else "Provide response in English."
-        )
+        with langfuse_client.start_as_current_observation(
+            as_type="span",
+            name="pathology-specimen-diagnosis",
+            input={
+                "crop": crop_hint,
+                "notes": user_notes,
+                "language": language,
+                "has_image": bool(image_bytes),
+                "farm_crop_id": farm_crop_id,
+            },
+        ) as root_span:
+            with propagate_attributes(
+                user_id=user_id or "anonymous_farmer",
+                tags=[crop_hint or "Crop", language, "pathology-scanner"],
+                metadata={"farm_crop_id": farm_crop_id},
+            ):
+                ai = self._get_ai_client()
+                result_dict: Optional[Dict[str, Any]] = None
 
-        prompt = f"""You are a world-class plant pathologist and ICAR senior agricultural scientist diagnosing a crop pathology specimen for an Indian farmer.
+                lang_instruction = (
+                    "Provide disease name and symptoms in Hindi (Devanagari script) alongside English."
+                    if language == "hi"
+                    else "Provide response in Marathi alongside English."
+                    if language == "mr"
+                    else "Provide response in English."
+                )
+
+                prompt = f"""You are a world-class plant pathologist and ICAR senior agricultural scientist diagnosing a crop pathology specimen for an Indian farmer.
 Crop context: "{crop_hint or 'General crop'}"
 Farmer notes: "{user_notes or 'Plant showing noticeable discoloration, spots, or leaf deformation.'}"
 Language requested: {language} ({lang_instruction})
@@ -169,54 +189,85 @@ Return a valid JSON object matching this schema:
   "advisory_note": "A concise 2-sentence actionable instruction for the farmer."
 }}"""
 
-        if ai:
-            try:
-                from google.genai import types
-                contents = []
-                if image_bytes:
-                    mime = image_content_type or "image/jpeg"
-                    contents.append(
-                        types.Part.from_bytes(
-                            data=image_bytes,
-                            mime_type=mime,
-                        )
-                    )
-                contents.append(prompt)
+                if ai:
+                    try:
+                        from google.genai import types
+                        contents = []
+                        if image_bytes:
+                            mime = image_content_type or "image/jpeg"
+                            contents.append(
+                                types.Part.from_bytes(
+                                    data=image_bytes,
+                                    mime_type=mime,
+                                    )
+                            )
+                        contents.append(prompt)
 
-                response = ai.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                    ),
+                        with langfuse_client.start_as_current_observation(
+                            as_type="generation",
+                            name="gemini-pathology-vision",
+                            model="gemini-3.5-flash",
+                            input=prompt,
+                            metadata={"crop_hint": crop_hint, "language": language},
+                        ) as gen_span:
+                            response = ai.models.generate_content(
+                                model="gemini-3.5-flash",
+                                contents=contents,
+                                config=types.GenerateContentConfig(
+                                    response_mime_type="application/json",
+                                ),
+                            )
+
+                            usage = None
+                            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                                usage = {
+                                    "input": getattr(response.usage_metadata, "prompt_token_count", None),
+                                    "output": getattr(response.usage_metadata, "candidates_token_count", None),
+                                    "total": getattr(response.usage_metadata, "total_token_count", None),
+                                }
+
+                            gen_span.update(
+                                output=response.text,
+                                usage_details=usage,
+                            )
+
+                        if response.text:
+                            result_dict = json.loads(response.text)
+                    except Exception as e:
+                        print(f"Gemini diagnosis error: {e}. Falling back to specimen knowledge base.")
+
+                # Resilient specimen fallback if Gemini wasn't available or failed
+                if not result_dict:
+                    notes_lower = (user_notes or "").lower() + " " + (crop_hint or "").lower()
+                    matched = SPECIMEN_KNOWLEDGE_BASE[0]
+                    for specimen in SPECIMEN_KNOWLEDGE_BASE:
+                        if any(kw in notes_lower for kw in specimen["keywords"]):
+                            matched = specimen
+                            break
+                    result_dict = {
+                        "disease_name": matched["disease_name"],
+                        "scientific_name": matched["scientific_name"],
+                        "crop": crop_hint or matched["crop"],
+                        "pathogen_type": matched["pathogen_type"],
+                        "severity": matched["severity"],
+                        "severity_score": matched["severity_score"],
+                        "confidence_score": matched["confidence_score"],
+                        "symptoms": matched["symptoms"],
+                        "organic_remedies": matched["organic_remedies"],
+                        "chemical_treatments": matched["chemical_treatments"],
+                        "preventive_measures": matched["preventive_measures"],
+                        "advisory_note": matched["advisory_note"],
+                    }
+
+                root_span.update(
+                    output={
+                        "disease_name": result_dict.get("disease_name"),
+                        "scientific_name": result_dict.get("scientific_name"),
+                        "severity": result_dict.get("severity"),
+                        "confidence_score": result_dict.get("confidence_score"),
+                        "pathogen_type": result_dict.get("pathogen_type"),
+                    }
                 )
-                if response.text:
-                    result_dict = json.loads(response.text)
-            except Exception as e:
-                print(f"Gemini diagnosis error: {e}. Falling back to specimen knowledge base.")
-
-        # Resilient specimen fallback if Gemini wasn't available or failed
-        if not result_dict:
-            notes_lower = (user_notes or "").lower() + " " + (crop_hint or "").lower()
-            matched = SPECIMEN_KNOWLEDGE_BASE[0]
-            for specimen in SPECIMEN_KNOWLEDGE_BASE:
-                if any(kw in notes_lower for kw in specimen["keywords"]):
-                    matched = specimen
-                    break
-            result_dict = {
-                "disease_name": matched["disease_name"],
-                "scientific_name": matched["scientific_name"],
-                "crop": crop_hint or matched["crop"],
-                "pathogen_type": matched["pathogen_type"],
-                "severity": matched["severity"],
-                "severity_score": matched["severity_score"],
-                "confidence_score": matched["confidence_score"],
-                "symptoms": matched["symptoms"],
-                "organic_remedies": matched["organic_remedies"],
-                "chemical_treatments": matched["chemical_treatments"],
-                "preventive_measures": matched["preventive_measures"],
-                "advisory_note": matched["advisory_note"],
-            }
 
         result_dict["user_notes"] = user_notes
         result_dict["created_at"] = datetime.now()

@@ -136,26 +136,15 @@ export const CropScreen: React.FC<CropScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* 1. Header with Eyebrow and 48px Circular Action */}
+        {/* 1. Header Title */}
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.eyebrow, { color: colors.textMuted }]}>DIAGNOSTIC SYSTEM // v2.4</Text>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('crop.headerTitle', language)}</Text>
-          </View>
-
-          <Pressable
-            style={[styles.headerActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={onOpenScanner}
-          >
-            <Camera size={20} color={colors.primary} />
-            <View style={styles.pingDot} />
-          </Pressable>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{t('crop.headerTitle', language)}</Text>
         </View>
 
         {/* 2. Hero Scanner Card */}
@@ -644,7 +633,7 @@ export const CropScreen: React.FC<CropScreenProps> = ({
           fetchCrops();
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -735,7 +724,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 140,
   },
   header: {
@@ -743,18 +733,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 8,
-    marginBottom: 16,
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontFamily: 'monospace',
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    marginBottom: 22,
   },
   title: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '800',
-    marginTop: 2,
+    letterSpacing: -0.5,
+    marginTop: 0,
   },
   headerActionBtn: {
     width: 48,

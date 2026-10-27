@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -29,3 +29,20 @@ async def get_current_user(
         )
 
     return payload
+
+
+optional_bearer = HTTPBearer(auto_error=False)
+
+
+async def get_optional_user(
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials],
+        Depends(optional_bearer),
+    ] = None,
+) -> Optional[dict]:
+    if not credentials or not credentials.credentials:
+        return None
+    try:
+        return await verify_access_token(credentials.credentials)
+    except Exception:
+        return None

@@ -6,7 +6,7 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.home': 'Home',
     'nav.crop': 'Crop',
     'nav.expert': 'Expert',
-    'nav.profile': 'You',
+    'nav.profile': 'Profile',
 
     // Auth & Navigation
     'auth.loginTitle': 'Login or Create Account',
@@ -79,7 +79,18 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     // Voice Assistant
     'voice.title': 'Plant Scientist AI Voice',
     'voice.subtitle': 'Ask anything about crops, pests, fertilizers or weather in your local language.',
-    'voice.quickQuestions': 'Quick qns to try',
+    'voice.quickQuestions': 'Quick questions to try',
+    'voice.listening': 'Listening...',
+    'voice.tapToStop': 'Tap to finish speaking & analyze',
+    'voice.tapToStart': 'Tap mic to speak',
+    'voice.processing': 'Listening & analyzing crop diagnosis...',
+    'voice.speaking': 'Plant Doctor is speaking...',
+    'voice.replay': 'Replay Voice Advice',
+    'voice.pause': 'Pause Voice',
+    'voice.editPrompt': 'Edit Question',
+    'voice.askAgain': 'Ask / Retry',
+    'voice.detectedCrop': 'Crop Context',
+    'voice.activeIssue': 'Active Issue',
 
     // Profile
     'profile.verified': 'VERIFIED',
@@ -113,7 +124,7 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.home': 'होम',
     'nav.crop': 'फसल',
     'nav.expert': 'विशेषज्ञ',
-    'nav.profile': 'आप',
+    'nav.profile': 'प्रोफ़ाइल',
 
     // Auth & Navigation
     'auth.loginTitle': 'लॉगिन करें या खाता बनाएं',
@@ -187,6 +198,17 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'voice.title': 'प्लांट साइंटिस्ट एआई वॉइस',
     'voice.subtitle': 'अपनी स्थानीय भाषा में फसलों, कीटों, उर्वरकों या मौसम के बारे में कुछ भी पूछें।',
     'voice.quickQuestions': 'पूछने के लिए मुख्य प्रश्न',
+    'voice.listening': 'सुन रहे हैं...',
+    'voice.tapToStop': 'बोलने के बाद रोकने और पूछने के लिए टैप करें',
+    'voice.tapToStart': 'बोलने के लिए माइक दबाएं',
+    'voice.processing': 'फसल की स्थिति का विश्लेषण कर रहे हैं...',
+    'voice.speaking': 'कृषि डॉक्टर बोल रहे हैं...',
+    'voice.replay': 'पुनः सुनें',
+    'voice.pause': 'रोकें',
+    'voice.editPrompt': 'सवाल सुधारें',
+    'voice.askAgain': 'फिर से पूछें',
+    'voice.detectedCrop': 'पहचानी गई फसल',
+    'voice.activeIssue': 'सक्रिय समस्या',
 
     // Profile
     'profile.verified': 'सत्यापित',

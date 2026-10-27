@@ -7,6 +7,8 @@ from app.api.v1.voice import router as voice_router
 from app.api.v1.crops import router as crops_router
 from app.api.v1.farms import router as farms_router
 from app.api.v1.diagnoses import router as diagnoses_router
+from app.api.v1.assistant import router as assistant_router
+from app.api.v1.media import router as media_router
 
 
 app = FastAPI(
@@ -49,10 +51,13 @@ app.include_router(me_router, prefix="/v1")
 app.include_router(crops_router, prefix="/v1")
 app.include_router(farms_router, prefix="/v1")
 app.include_router(diagnoses_router, prefix="/v1")
+app.include_router(assistant_router, prefix="/v1")
+app.include_router(media_router, prefix="/v1")
 
 # Voice endpoints (also available at /voice and /v1/voice)
 app.include_router(voice_router)
 app.include_router(voice_router, prefix="/v1")
+
 
 
 @app.get("/health")

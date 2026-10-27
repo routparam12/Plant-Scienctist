@@ -1,13 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppLanguage } from '../types';
 
-const CACHE_KEY_PREFIX = '@plant_scientist_news_cache_';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_KEY_PREFIX = '@plant_scientist_news_cache_v2_';
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours TTL
 
 export interface NewsArticle {
   id: string;
   title: string;
   snippet: string;
+  content: string; // Full un-truncated article text
   link: string;
   publishedAt: string;
   source: string;
@@ -18,6 +19,22 @@ const FEEDS = {
   en: 'https://krishijagran.com/feeds/rss',
   hi: 'https://hindi.krishijagran.com/feeds/rss',
 };
+
+function cleanHtmlText(htmlStr?: string): string {
+  if (!htmlStr) return '';
+  return htmlStr
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n\s*\n\s*/g, '\n\n')
+    .trim();
+}
 
 export async function fetchAgronomyNews(
   language: AppLanguage = 'en',
@@ -49,41 +66,44 @@ export async function fetchAgronomyNews(
   // 2. Fetch fresh feed if cache missing or expired
   if (!isCacheValid) {
     try {
-      const targetRss = FEEDS[langKey] || FEEDS.en;
-      const gatewayUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(targetRss)}`;
+      const targetRssCandidates = [
+        FEEDS[langKey],
+        FEEDS.en, // Secondary fallback if primary feed returns error
+      ];
 
-      const response = await fetch(gatewayUrl);
-      if (response.ok) {
-        const data = await response.json();
+      for (const targetRss of targetRssCandidates) {
+        if (!targetRss) continue;
+        const gatewayUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(targetRss)}`;
 
-        if (data && data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
-          const freshItems: NewsArticle[] = data.items.map((item: any, idx: number) => ({
-            id: item.guid || `${idx}-${Date.now()}`,
-            title:
-              item.title
-                ?.replace(/<[^>]+>/g, '')
-                .replace(/&quot;/g, '"')
-                .replace(/&#039;/g, "'")
-                .trim() || 'Agronomy Update',
-            snippet:
-              item.description
-                ?.replace(/<[^>]+>/g, '')
-                .replace(/&quot;/g, '"')
-                .replace(/&#039;/g, "'")
-                .trim()
-                .slice(0, 110) + '...' || '',
-            link: item.link || targetRss,
-            publishedAt: item.pubDate ? item.pubDate.split(' ')[0] : 'Today',
-            source: langKey === 'hi' ? 'कृषि जागरण' : 'Krishi Jagran',
-          }));
+        const response = await fetch(gatewayUrl);
+        if (response.ok) {
+          const data = await response.json();
 
-          rawItems = freshItems;
+          if (data && data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
+            rawItems = data.items.map((item: any, idx: number) => {
+              const cleanedTitle = cleanHtmlText(item.title) || 'Agronomy Update';
+              const fullBody = cleanHtmlText(item.content || item.description || '');
+              const shortSnippet = fullBody.length > 120 ? fullBody.slice(0, 120) + '...' : fullBody;
 
-          // Save to 24h cache
-          await AsyncStorage.setItem(
-            cacheKey,
-            JSON.stringify({ timestamp: Date.now(), items: rawItems })
-          ).catch(() => {});
+              return {
+                id: item.guid || `${idx}-${Date.now()}`,
+                title: cleanedTitle,
+                snippet: shortSnippet,
+                content: fullBody || shortSnippet,
+                link: item.link || targetRss,
+                publishedAt: item.pubDate ? item.pubDate.split(' ')[0] : 'Today',
+                source: langKey === 'hi' ? 'कृषि जागरण' : 'Krishi Jagran',
+              };
+            });
+
+            // Save to 12h cache
+            await AsyncStorage.setItem(
+              cacheKey,
+              JSON.stringify({ timestamp: Date.now(), items: rawItems })
+            ).catch(() => {});
+
+            break; // Successfully loaded live items
+          }
         }
       }
     } catch (fetchErr) {
@@ -99,14 +119,14 @@ export async function fetchAgronomyNews(
   const lowerCrops = userCropNames.map((c) => c.toLowerCase());
 
   const taggedItems: NewsArticle[] = rawItems.map((item) => {
-    const text = `${item.title} ${item.snippet}`.toLowerCase();
+    const text = `${item.title} ${item.content || item.snippet}`.toLowerCase();
     const hasMatch = lowerCrops.some((crop) => text.includes(crop));
     return { ...item, matchedCrop: hasMatch };
   });
 
-  // 4. Sort matched crops to top, then apply light shuffle within tiers
+  // 4. Sort matched crops to top
   const relevant = taggedItems.filter((i) => i.matchedCrop).sort(() => 0.5 - Math.random());
   const general = taggedItems.filter((i) => !i.matchedCrop).sort(() => 0.5 - Math.random());
 
-  return [...relevant, ...general].slice(0, 8);
+  return [...relevant, ...general].slice(0, 15);
 }

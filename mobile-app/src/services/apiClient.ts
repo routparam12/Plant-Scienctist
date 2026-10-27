@@ -4,7 +4,7 @@ import { authStorage } from './authStorage';
 // ─── Host PC's Wi-Fi LAN IP (updated to current subnet) ───
 const HOST_LAN_IP = '192.168.1.36';
 const DEFAULT_LAN_API = `http://${HOST_LAN_IP}:8000`;
-const ALT_LAN_API = 'http://192.168.0.165:8000';
+const ALT_LAN_APIS = ['http://192.168.1.36:8000', 'http://192.168.1.43:8000', 'http://192.168.0.165:8000'];
 
 // User-override via .env
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_LAN_API;
@@ -22,20 +22,24 @@ function buildCandidateBases(): string[] {
   } else if (Platform.OS === 'android') {
     // Android physical device via USB: adb reverse makes localhost work
     bases.push('http://localhost:8000');
+    // User-override from .env if defined
+    if (API_BASE_URL) bases.push(API_BASE_URL);
     // Primary LAN IP (works over current Wi-Fi)
     bases.push(DEFAULT_LAN_API);
-    // Alternate LAN IP
-    bases.push(ALT_LAN_API);
+    // Fallback LAN IPs
+    for (const alt of ALT_LAN_APIS) {
+      bases.push(alt);
+    }
     // Android emulator special IP
     bases.push('http://10.0.2.2:8000');
-    // User-override
-    if (API_BASE_URL !== DEFAULT_LAN_API) bases.push(API_BASE_URL);
   } else {
     // iOS simulator: localhost works directly
     bases.push('http://localhost:8000');
+    if (API_BASE_URL) bases.push(API_BASE_URL);
     bases.push(DEFAULT_LAN_API);
-    bases.push(ALT_LAN_API);
-    if (API_BASE_URL !== DEFAULT_LAN_API) bases.push(API_BASE_URL);
+    for (const alt of ALT_LAN_APIS) {
+      bases.push(alt);
+    }
   }
 
   // De-duplicate while preserving order
@@ -101,8 +105,99 @@ async function tryRefreshToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+/**
+ * Multipart/form-data upload using React Native's native XMLHttpRequest.
+ * Bypasses Expo SDK's WinterCG fetch polyfill which throws:
+ * "Unsupported FormDataPart implementation" when encountering React Native's { uri, name, type } format.
+ */
+export async function apiMultipartRequest<T = any>(
+  endpoint: string,
+  formData: FormData,
+  requiresAuth: boolean = true,
+  _isRetry = false
+): Promise<T> {
+  const token = requiresAuth ? await authStorage.getAccessToken() : null;
+  const candidateBases = buildCandidateBases();
+
+  let lastError: any = null;
+
+  for (const base of candidateBases) {
+    const candidateUrl = `${base}${endpoint}`;
+    try {
+      const result = await new Promise<{ status: number; text: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', candidateUrl);
+        xhr.timeout = 30000;
+
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+        // IMPORTANT: Never manually set 'Content-Type': 'multipart/form-data'.
+        // React Native / XMLHttpRequest automatically generates the boundary header!
+
+        xhr.onload = () => {
+          resolve({ status: xhr.status, text: xhr.responseText });
+        };
+
+        xhr.onerror = () => {
+          reject(new Error(`Network request failed at ${candidateUrl}`));
+        };
+
+        xhr.ontimeout = () => {
+          reject(new Error(`Upload request timed out at ${candidateUrl}`));
+        };
+
+        xhr.send(formData as any);
+      });
+
+      // Handle 401 Unauthorized token refresh
+      if (result.status === 401 && requiresAuth && !_isRetry) {
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+          return apiMultipartRequest<T>(endpoint, formData, true, true);
+        }
+      }
+
+      if (result.status >= 200 && result.status < 300) {
+        if (cachedWorkingBaseUrl !== base) {
+          console.log(`[API] Connected via ${base}`);
+        }
+        cachedWorkingBaseUrl = base;
+
+        try {
+          return JSON.parse(result.text) as T;
+        } catch {
+          return result.text as unknown as T;
+        }
+      } else {
+        let errorMsg = `HTTP ${result.status}`;
+        try {
+          const parsed = JSON.parse(result.text);
+          errorMsg = parsed.detail || parsed.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      lastError = err;
+    }
+  }
+
+  const triedUrls = candidateBases.map((b) => `${b}${endpoint}`).join(', ');
+  console.error(`API Multipart Request failed. Tried: [${triedUrls}] Error:`, lastError?.message || lastError);
+  throw new Error(
+    `Cannot connect to backend server. Tried:\n• ${candidateBases.join('\n• ')}\n\n` +
+    `Ensure FastAPI is running with: uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+  );
+}
+
 export async function apiRequest<T = any>(endpoint: string, options: RequestOptions = {}, _isRetry = false): Promise<T> {
   const { requiresAuth = true, headers = {}, ...rest } = options;
+
+  // Intercept FormData bodies to avoid Expo WinterCG fetch "Unsupported FormDataPart implementation"
+  if (rest.body instanceof FormData) {
+    return apiMultipartRequest<T>(endpoint, rest.body, requiresAuth, _isRetry);
+  }
+
   const mergedHeaders: Record<string, string> = {
     ...(headers as Record<string, string>),
   };
@@ -115,7 +210,7 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestOpti
   }
 
   // If body is NOT FormData, default to application/json
-  if (!(rest.body instanceof FormData) && !mergedHeaders['Content-Type']) {
+  if (!mergedHeaders['Content-Type']) {
     mergedHeaders['Content-Type'] = 'application/json';
   }
 
@@ -416,24 +511,155 @@ export async function diagnoseCropImage(params: {
 // VOICE ASSISTANT ENDPOINT
 // ─────────────────────────────────────────────────────────────
 
-export async function queryVoiceAssistant(audioUri: string, returnAudio: boolean = false) {
-  const formData = new FormData();
-  const filename = audioUri.split('/').pop() || 'farmer_voice.m4a';
-  const match = /\.(\w+)$/.exec(filename);
-  const ext = match ? match[1].toLowerCase() : 'm4a';
-  const mimeType = ext === 'wav' ? 'audio/wav' : ext === 'mp3' ? 'audio/mpeg' : 'audio/m4a';
+export interface VoiceQueryOptions {
+  audioUri?: string;
+  queryText?: string;
+  language?: string;
+  cropId?: string;
+  returnAudio?: boolean;
+}
 
-  formData.append('audio_file', {
-    uri: audioUri,
+export interface VoiceQueryResponse {
+  success: boolean;
+  transcript: string;
+  transcription?: string;
+  reply_text: string;
+  plant_response?: string;
+  audio_base64?: string | null;
+  detected_crop?: string | null;
+  language?: string;
+  active_issue?: string | null;
+  has_memory?: boolean;
+}
+
+export async function queryVoiceAssistant(
+  audioUriOrOptions: string | VoiceQueryOptions,
+  returnAudio: boolean = false
+): Promise<VoiceQueryResponse> {
+  const options: VoiceQueryOptions =
+    typeof audioUriOrOptions === 'string'
+      ? { audioUri: audioUriOrOptions, returnAudio }
+      : audioUriOrOptions;
+
+  const formData = new FormData();
+
+  if (options.audioUri) {
+    const filename = options.audioUri.split('/').pop() || 'farmer_voice.m4a';
+    const match = /\.(\w+)$/.exec(filename);
+    const ext = match ? match[1].toLowerCase() : 'm4a';
+    const mimeType = ext === 'wav' ? 'audio/wav' : ext === 'mp3' ? 'audio/mpeg' : 'audio/m4a';
+
+    const filePayload = {
+      uri: options.audioUri,
+      name: filename,
+      type: mimeType,
+    } as any;
+
+    formData.append('audio', filePayload);
+    formData.append('audio_file', filePayload);
+  }
+
+  if (options.queryText) {
+    formData.append('query_text', options.queryText);
+  }
+
+  if (options.language) {
+    formData.append('language', options.language);
+  }
+
+  if (options.cropId) {
+    formData.append('crop_id', options.cropId);
+  }
+
+  formData.append('return_audio', String(Boolean(options.returnAudio)));
+
+  return apiRequest<VoiceQueryResponse>('/v1/voice/query', {
+    method: 'POST',
+    requiresAuth: true,
+    body: formData,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// UNIFIED ASSISTANT ENDPOINT (/v1/assistant/message)
+// ─────────────────────────────────────────────────────────────
+
+export interface UploadMediaResult {
+  success: boolean;
+  media_id: string;
+  url: string;
+  content_type: string;
+  filename: string;
+  size: number;
+}
+
+export async function uploadMedia(
+  uri: string,
+  category: string = 'media'
+): Promise<UploadMediaResult> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'upload.bin';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1].toLowerCase() : 'jpg';
+
+  let mimeType = 'image/jpeg';
+  if (ext === 'png') mimeType = 'image/png';
+  else if (ext === 'webp') mimeType = 'image/webp';
+  else if (ext === 'm4a') mimeType = 'audio/m4a';
+  else if (ext === 'wav') mimeType = 'audio/wav';
+  else if (ext === 'mp3') mimeType = 'audio/mpeg';
+  else if (ext === 'webm') mimeType = 'audio/webm';
+
+  formData.append('file', {
+    uri,
     name: filename,
     type: mimeType,
   } as any);
 
-  formData.append('return_audio', String(returnAudio));
+  formData.append('category', category);
 
-  return apiRequest('/voice/query', {
+  return apiRequest<UploadMediaResult>('/v1/media/upload', {
     method: 'POST',
-    requiresAuth: false,
+    requiresAuth: true,
     body: formData,
   });
 }
+
+export interface AssistantMessagePayload {
+  conversation_id?: string;
+  input_mode: 'voice' | 'text';
+  audio_media_id?: string | null;
+  image_media_ids?: string[] | null;
+  text?: string | null;
+  language?: string;
+  crop_id?: string | null;
+}
+
+export interface AssistantMessageResponse {
+  reply_text: string;
+  audio_url?: string | null;
+  transcript?: string | null;
+  intent?: string;
+  confidence?: number;
+  is_followup?: boolean;
+  follow_up_question?: string | null;
+  detected_crop?: string | null;
+  crop_type_id?: string | null;
+  conversation_id?: string;
+  source?: string;
+}
+
+export async function sendAssistantMessage(
+  payload: AssistantMessagePayload
+): Promise<AssistantMessageResponse> {
+  return apiRequest<AssistantMessageResponse>('/v1/assistant/message', {
+    method: 'POST',
+    requiresAuth: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+

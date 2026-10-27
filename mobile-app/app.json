@@ -18,14 +18,37 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.mobileapp",
-      "usesCleartextTraffic": true
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to diagnose plant diseases.",
+          "cameraPermission": "The app accesses your camera to photograph plant leaves for AI diagnosis."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Show local weather conditions and agronomy advisories."
+        }
+      ],
+      "expo-audio",
+      "expo-asset"
     ]
   }
 }

@@ -39,6 +39,7 @@ import { fetchAgronomyNews, NewsArticle } from '../services/newsService';
 import { CropCard } from '../components/CropCard';
 import { CropDetailModal } from '../components/CropDetailModal';
 import { WeatherAdvisoryModal } from '../components/WeatherAdvisoryModal';
+import { ArticleReaderModal } from '../components/ArticleReaderModal';
 import { fetchWeatherAndSprayAdvisory, WeatherPayload } from '../services/weatherService';
 import { t, getGreeting } from '../constants/translations';
 import { useTheme } from '../context/ThemeContext';
@@ -106,6 +107,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Dynamic Live Weather State & Modal
   const [weatherData, setWeatherData] = useState<WeatherPayload | null>(null);
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
+
+  // Agri News State & Modal
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
+  const [selectedNewsArticle, setSelectedNewsArticle] = useState<NewsArticle | null>(null);
+
+  const handleOpenNewsModal = (article?: NewsArticle) => {
+    setSelectedNewsArticle(article || null);
+    setIsNewsModalOpen(true);
+  };
 
   // Live Krishi Jagran News State
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
@@ -326,14 +336,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* 1. Header with Typewriter Greeting & Anti-Clipped Flower Emoji */}
+        {/* 1. Header with App Branding, Typewriter Greeting & Anti-Clipped Flower Emoji */}
         <View style={styles.topHeader}>
           <View style={{ flex: 1, marginRight: 12 }}>
+            {/* App Name & Logo Branding Bar */}
+            <View style={styles.brandRow}>
+              <View style={[styles.brandLogoBox, { backgroundColor: colors.accentBg }]}>
+                <Text style={styles.brandLogoEmoji}>🪻</Text>
+              </View>
+              <Text style={[styles.brandTitleText, { color: colors.primary }]}>
+                Plant Scientist
+              </Text>
+              <View style={[styles.brandPill, { backgroundColor: colors.pillBg }]}>
+                <Text style={[styles.brandPillText, { color: colors.textMuted }]}>AI AGRI</Text>
+              </View>
+            </View>
+
             <View style={styles.greetingRow}>
               <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>
                 {displayedGreeting}
@@ -386,12 +409,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             {language === 'hi' ? 'कृषि टूलकिट' : 'AGRONOMY TOOLKIT'}
           </Text>
           <View style={styles.toolkitGrid}>
-            <Pressable style={[styles.toolkitCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onOpenScanner}>
-              <View style={[styles.toolkitIconBox, { backgroundColor: colors.toolkitDoctorBg }]}>
-                <Camera size={18} color={colors.toolkitDoctorIcon} />
+            <Pressable
+              style={[styles.toolkitCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+              onPress={() => handleOpenNewsModal()}
+            >
+              <View style={[styles.toolkitIconBox, { backgroundColor: colors.accentBg }]}>
+                <Text style={{ fontSize: 16 }}>📰</Text>
               </View>
               <Text style={[styles.toolkitLabel, { color: colors.textPrimary }]}>
-                {language === 'hi' ? 'एआई डॉक्टर' : 'AI Doctor'}
+                {language === 'hi' ? 'समाचार' : 'News'}
               </Text>
             </Pressable>
 
@@ -621,7 +647,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <Pressable
                   key={item.id}
                   style={[styles.articleCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                  onPress={() => handleOpenLiveNewsArticle(item.link)}
+                  onPress={() => handleOpenNewsModal(item)}
                 >
                   <View style={styles.articleTopRow}>
                     <Text style={[styles.articleSourceTag, { color: colors.primary }]}>{item.source}</Text>
@@ -651,6 +677,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         )}
       </ScrollView>
+
+      {/* Article Reader Modal */}
+      <ArticleReaderModal
+        visible={isNewsModalOpen}
+        language={language}
+        articles={newsArticles}
+        selectedArticle={selectedNewsArticle}
+        onClose={() => setIsNewsModalOpen(false)}
+      />
 
       {/* Weather Advisory Modal */}
       <WeatherAdvisoryModal
@@ -772,7 +807,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -781,7 +816,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 140,
   },
   topHeader: {
@@ -789,7 +825,39 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 16,
-    marginTop: 4,
+    marginTop: 0,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  brandLogoBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogoEmoji: {
+    fontSize: 16,
+    includeFontPadding: false,
+  },
+  brandTitleText: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  brandPill: {
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  brandPillText: {
+    fontSize: 9,
+    fontFamily: 'monospace',
+    fontWeight: '800',
   },
   greetingRow: {
     flexDirection: 'row',

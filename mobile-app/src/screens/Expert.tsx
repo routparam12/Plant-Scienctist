@@ -104,14 +104,11 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* 1. Header with Eyebrow and 48px Circular Action */}
+        {/* 1. Header Title */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.eyebrow, { color: colors.textMuted }]}>
-              AGRONOMIST // VERIFIED ICAR NETWORK
-            </Text>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Field Experts.</Text>
           </View>
 
@@ -753,7 +750,7 @@ export const ExpertScreen: React.FC<ExpertScreenProps> = ({
           </View>
         </Modal>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -762,7 +759,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 140,
   },
   header: {
@@ -779,9 +777,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   title: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '800',
-    marginTop: 2,
+    letterSpacing: -0.5,
+    marginTop: 0,
   },
   headerActionBtn: {
     width: 48,
