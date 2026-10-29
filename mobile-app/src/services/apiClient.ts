@@ -59,6 +59,7 @@ export function setBaseUrl(url: string) {
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
+  timeout?: number;
 }
 
 // ─── Silent token refresh state ───
@@ -216,6 +217,9 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestOpti
 
   const candidateBases = buildCandidateBases();
 
+  const isMutating = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method?.toUpperCase() || 'GET');
+  const timeoutMs = options.timeout || (isMutating ? 20000 : 15000);
+
   let lastError: any = null;
   let successfulResponse: Response | null = null;
   let workingBase: string = candidateBases[0];
@@ -224,7 +228,7 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestOpti
     const candidateUrl = `${base}${endpoint}`;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const resp = await fetch(candidateUrl, {
         ...rest,
@@ -242,6 +246,11 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestOpti
       break;
     } catch (err: any) {
       lastError = err;
+      // If the request was aborted due to timeout and was a mutating request (e.g. POST /v1/auth/otp/request),
+      // DO NOT continue spamming alternate candidate URLs which creates duplicate side-effects (e.g. duplicate OTPs)
+      if (isMutating && (err.name === 'AbortError' || err.message?.includes('canceled') || err.message?.includes('aborted'))) {
+        break;
+      }
     }
   }
 
@@ -286,6 +295,7 @@ export async function requestOtp(email: string): Promise<{ success: boolean; mes
   return apiRequest('/v1/auth/otp/request', {
     method: 'POST',
     requiresAuth: false,
+    timeout: 25000,
     body: JSON.stringify({ email }),
   });
 }
@@ -299,6 +309,7 @@ export async function verifyOtp(email: string, token: string): Promise<{
   const data = await apiRequest('/v1/auth/otp/verify', {
     method: 'POST',
     requiresAuth: false,
+    timeout: 20000,
     body: JSON.stringify({ email, token }),
   });
 

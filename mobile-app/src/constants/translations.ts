@@ -11,8 +11,8 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     // Auth & Navigation
     'auth.loginTitle': 'Login or Create Account',
     'auth.loginSubtitle': 'Enter your mobile number or email to receive a secure login OTP.',
-    'auth.emailPlaceholder': 'Enter email address (e.g., ramesh@farm.com)',
-    'auth.mobilePlaceholder': '9876543210',
+    'auth.emailPlaceholder': 'Enter email address',
+    'auth.mobilePlaceholder': 'Enter mobile number',
     'auth.tabEmail': 'Email',
     'auth.tabMobile': 'Mobile ',
     'auth.emailLabel': 'Email Address',
@@ -129,8 +129,8 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     // Auth & Navigation
     'auth.loginTitle': 'लॉगिन करें या खाता बनाएं',
     'auth.loginSubtitle': 'सुरक्षित लॉगिन ओटीपी प्राप्त करने के लिए अपना मोबाइल नंबर या ईमेल दर्ज करें।',
-    'auth.emailPlaceholder': 'ईमेल पता दर्ज करें (उदा. ramesh@farm.com)',
-    'auth.mobilePlaceholder': '9876543210',
+    'auth.emailPlaceholder': 'ईमेल पता दर्ज करें',
+    'auth.mobilePlaceholder': 'मोबाइल नंबर दर्ज करें',
     'auth.tabEmail': 'ईमेल ',
     'auth.tabMobile': 'मोबाइल ',
     'auth.emailLabel': 'ईमेल पता',

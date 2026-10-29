@@ -43,15 +43,17 @@ interface ProfileScreenProps {
   onLogout?: () => void;
 }
 
-const createDefaultProfile = (user?: any): UserFarmerProfile => {
+const createDefaultProfile = (user?: any, language: AppLanguage = 'en'): UserFarmerProfile => {
   const email = user?.email || '';
-  const displayName = user?.user_metadata?.full_name || (email ? email.split('@')[0] : 'Farmer');
+  const isGuest = !user || !email;
+  const visitorName = language === 'hi' ? 'आगंतुक' : 'Visitor';
+  const displayName = user?.user_metadata?.full_name || (email ? email.split('@')[0] : visitorName);
   return {
     id: user?.id || '',
     name: displayName,
     hindiName: displayName,
-    email: email,
-    phone: user?.phone || '',
+    email: isGuest ? 'guest@plantscientist.app' : email,
+    phone: isGuest ? 'Guest Explorer Mode' : (user?.phone || ''),
     village: '',
     district: '',
     state: '',
@@ -199,6 +201,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   const getInitials = (name?: string, email?: string) => {
+    if (!isLoggedIn || name === 'Visitor' || name === 'आगंतुक') {
+      return 'V';
+    }
     if (name && name.trim()) {
       const parts = name.trim().split(/\s+/);
       if (parts.length >= 2) {
@@ -209,12 +214,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     if (email && email.trim()) {
       return email.slice(0, 2).toUpperCase();
     }
-    return 'PS';
+    return 'V';
   };
 
   const locationText =
     [profile.village, profile.district, profile.state].filter(Boolean).join(', ') ||
-    (isLoggedIn ? 'Field location pending setup' : 'Explore Mode');
+    (isLoggedIn ? 'Field location pending setup' : 'Explore Mode (Location Pending)');
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -421,92 +426,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         </View>
 
-        {/* 5. Device Platform Frame Simulator */}
-        <View style={[styles.settingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <View style={styles.settingCardHeader}>
-            <View style={[styles.settingIconBox, { backgroundColor: isDark ? '#1E293B' : '#DBEAFE' }]}>
-              <Smartphone size={16} color="#2563EB" />
-            </View>
-            <View>
-              <Text style={[styles.settingTitle, { color: colors.textPrimary }]}>
-                Cross-Platform Device Frame
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textMuted }]}>
-                Apple iOS & Android Smartphone View
-              </Text>
-            </View>
-          </View>
 
-          <View style={styles.buttonOptionsRow}>
-            {[
-              { id: 'ios', label: 'iOS (Apple)', sub: 'Dynamic Island' },
-              { id: 'android', label: 'Android', sub: 'Pixel Punch' },
-              { id: 'responsive', label: 'Responsive', sub: 'Full Canvas' },
-            ].map((item) => {
-              const isSelected = devicePlatform === item.id;
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[
-                    styles.langCardBtn,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                    isSelected && { backgroundColor: colors.accentBg, borderColor: colors.primary },
-                  ]}
-                  onPress={() => setDevicePlatform(item.id as DevicePlatform)}
-                >
-                  <Text
-                    style={[
-                      styles.langCardMain,
-                      { color: isSelected ? colors.primary : colors.textPrimary },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.langCardSub,
-                      { color: isSelected ? colors.primary : colors.textMuted },
-                    ]}
-                  >
-                    {item.sub}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* 6. Offline Status Indicator */}
-        <View style={[styles.offlineCard, { backgroundColor: colors.accentBg, borderColor: colors.primary }]}>
-          <View style={styles.offlineCardHeader}>
-            <View style={styles.offlineCardTitleRow}>
-              <Database size={16} color={colors.primary} />
-              <Text style={[styles.offlineCardTitle, { color: colors.primary }]}>
-                Offline-First Capable (100%)
-              </Text>
-            </View>
-
-            <Pressable
-              style={styles.syncBtn}
-              onPress={handleManualSync}
-              disabled={isSyncing}
-            >
-              <RefreshCw size={12} color={colors.primary} />
-              <Text style={[styles.syncBtnText, { color: colors.primary }]}>
-                {isSyncing ? 'Syncing...' : 'Sync'}
-              </Text>
-            </Pressable>
-          </View>
-
-          <Text style={[styles.offlineCardDesc, { color: colors.textSecondary }]}>
-            All crop schedules, disease specimens, and booking records are cached locally on device.
-            You can diagnose crops even with zero field network connectivity.
-          </Text>
-
-          <Text style={[styles.offlineCardStatus, { color: colors.primary }]}>
-            Status: {syncStatusText}
-          </Text>
-        </View>
 
         {/* 7. Account / Login Screen Access */}
         <View style={styles.authRow}>

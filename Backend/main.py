@@ -61,6 +61,7 @@ app.include_router(voice_router, prefix="/v1")
 
 
 @app.get("/health")
+@app.get("/v1/health")
 async def health():
     return {
         "status": "ok",

@@ -157,18 +157,16 @@ export const CradleBottomNav: React.FC<CradleBottomNavProps> = ({
 
       {/* Center Floating Voice Assistant Mic Button nested in the Cradle Scoop */}
       <View style={styles.fabWrapper}>
-        <View style={[styles.fabGlowRing, { backgroundColor: colors.accentBg }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.fabButton,
-              { backgroundColor: colors.primary, shadowColor: '#000' },
-              pressed && styles.fabPressed,
-            ]}
-            onPress={onOpenVoice || onOpenScanner}
-          >
-            <Mic size={26} color="#FFFFFF" strokeWidth={2.3} />
-          </Pressable>
-        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabButton,
+            { backgroundColor: colors.primary, shadowColor: '#000' },
+            pressed && styles.fabPressed,
+          ]}
+          onPress={onOpenVoice || onOpenScanner}
+        >
+          <Mic size={26} color="#FFFFFF" strokeWidth={2.3} />
+        </Pressable>
       </View>
     </View>
   );

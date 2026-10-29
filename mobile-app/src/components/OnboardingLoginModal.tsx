@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -9,16 +9,22 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
   ScrollView,
-  StatusBar,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Phone, KeyRound, CheckCircle2, ArrowRight, ShieldCheck, Globe, Info } from 'lucide-react-native';
+import { Mail, Phone, KeyRound, CheckCircle2, ArrowRight, ShieldCheck, Globe, Info, Sprout } from 'lucide-react-native';
 import { requestOtp, verifyOtp } from '../services/apiClient';
 import { authStorage } from '../services/authStorage';
 import { AppLanguage } from '../types';
 import { t } from '../constants/translations';
 import { THEME } from '../constants/theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface OnboardingLoginModalProps {
   visible: boolean;
@@ -46,6 +52,28 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoBannerMsg, setInfoBannerMsg] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const cycleLanguage = () => {
     if (!onLanguageChange) return;
@@ -74,7 +102,6 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
         setErrorMsg('Please enter a valid 10-digit mobile number.');
         return;
       }
-      // Display localized friendly notice inside the card
       setInfoBannerMsg(t('auth.mobileNotice', language));
       return;
     }
@@ -137,18 +164,22 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
     <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={handleExplore}>
       <SafeAreaView style={styles.fullScreenContainer}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.mainWrapper}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              keyboardVisible && styles.scrollContentKeyboard,
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             {/* Top Bar: Language Selector Left, Explore App Right */}
-            <View style={styles.topBar}>
+            <View style={[styles.topBar, keyboardVisible && styles.topBarKeyboard]}>
               <Pressable style={styles.langBtn} onPress={cycleLanguage}>
-                <Globe size={16} color="#0D6832" />
+                <Globe size={14} color="#0D6832" />
                 <Text style={styles.langBtnText}>{getLanguageLabel()}</Text>
               </Pressable>
 
@@ -157,22 +188,23 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
               </Pressable>
             </View>
 
-            {/* Brand Header: Centered rounded lavender icon box (88x88, borderRadius 24) */}
-            <View style={styles.brandHeader}>
-              <View style={styles.logoBadge}>
-                <Text style={styles.boxEmoji}>🪻</Text>
+            {/* Brand Header: Smooth 60fps layout animation */}
+            <View style={[styles.brandHeader, keyboardVisible && styles.brandHeaderKeyboard]}>
+              <View style={[styles.logoBadge, keyboardVisible && styles.logoBadgeKeyboard]}>
+                <Sprout size={keyboardVisible ? 24 : 34} color="#0D6832" />
               </View>
-              <View style={styles.brandTitleRow}>
-                <Text style={styles.brandTitle}>Plant Scientist</Text>
-                <Text style={styles.titleEmoji}>🪻</Text>
-              </View>
-              <Text style={styles.brandSubtitle}>
-                Smart Farming Companion & AI Plant Pathology
+              <Text style={[styles.brandTitle, keyboardVisible && styles.brandTitleKeyboard]}>
+                Plant Scientist
               </Text>
+              {!keyboardVisible && (
+                <Text style={styles.brandSubtitle}>
+                  Smart Farming Companion & AI Plant Pathology
+                </Text>
+              )}
             </View>
 
-            {/* Main White Card */}
-            <View style={styles.cardContainer}>
+            {/* Main White Login Card */}
+            <View style={[styles.cardContainer, keyboardVisible && styles.cardContainerKeyboard]}>
               {errorMsg && (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorText}>{errorMsg}</Text>
@@ -181,7 +213,7 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
 
               {infoBannerMsg && (
                 <View style={styles.infoBox}>
-                  <Info size={16} color="#D97706" style={{ marginRight: 8, marginTop: 1 }} />
+                  <Info size={15} color="#D97706" style={{ marginRight: 6, marginTop: 1 }} />
                   <Text style={styles.infoText}>{infoBannerMsg}</Text>
                 </View>
               )}
@@ -191,14 +223,14 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                   <Text style={styles.cardTitle}>{t('auth.loginTitle', language)}</Text>
                   <Text style={styles.cardSubtitle}>{t('auth.loginSubtitle', language)}</Text>
 
-                  {/* Dual Tab Switcher with 3px solid #0D6832 bottom border & 'soon' badge pill */}
+                  {/* Dual Tab Switcher */}
                   <View style={styles.tabToggleRow}>
                     <Pressable
                       style={[styles.tabBtn, authTab === 'email' && styles.tabBtnActive]}
                       onPress={() => handleTabSwitch('email')}
                     >
                       <Mail
-                        size={16}
+                        size={15}
                         color={authTab === 'email' ? '#0D6832' : '#556052'}
                         style={{ marginRight: 6 }}
                       />
@@ -217,7 +249,7 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                       onPress={() => handleTabSwitch('mobile')}
                     >
                       <Phone
-                        size={16}
+                        size={15}
                         color={authTab === 'mobile' ? '#0D6832' : '#556052'}
                         style={{ marginRight: 6 }}
                       />
@@ -262,7 +294,7 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>{t('auth.emailLabel', language)}</Text>
                       <View style={styles.emailInputRow}>
-                        <Mail size={18} color="#0D6832" style={{ marginRight: 10 }} />
+                        <Mail size={16} color="#0D6832" style={{ marginRight: 8 }} />
                         <TextInput
                           style={styles.textInput}
                           placeholder={t('auth.emailPlaceholder', language)}
@@ -296,10 +328,24 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                     ) : (
                       <>
                         <Text style={styles.primaryButtonText}>{t('auth.sendOtp', language)}</Text>
-                        <ArrowRight size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                        <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
                       </>
                     )}
                   </Pressable>
+
+                  {authTab === 'email' && email.trim().length > 3 && (
+                    <Pressable
+                      style={{ marginTop: 14, alignItems: 'center', paddingVertical: 4 }}
+                      onPress={() => {
+                        setErrorMsg(null);
+                        setStep('otp');
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, color: '#0D6832', fontWeight: '700' }}>
+                        {language === 'hi' ? 'पहले से ओटीपी है? यहाँ कोड दर्ज करें →' : 'Already received OTP? Enter code here →'}
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               ) : (
                 <View style={styles.content}>
@@ -310,7 +356,7 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                   </Text>
 
                   <View style={styles.emailInputRow}>
-                    <KeyRound size={20} color="#0D6832" style={{ marginRight: 10 }} />
+                    <KeyRound size={18} color="#0D6832" style={{ marginRight: 8 }} />
                     <TextInput
                       style={[styles.textInput, styles.otpInput]}
                       placeholder="123456"
@@ -338,7 +384,7 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
                       <>
-                        <CheckCircle2 size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <CheckCircle2 size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                         <Text style={styles.primaryButtonText}>{t('auth.verifyBtn', language)}</Text>
                       </>
                     )}
@@ -351,15 +397,17 @@ export const OnboardingLoginModal: React.FC<OnboardingLoginModalProps> = ({
               )}
             </View>
 
-            {/* Footer Placed Outside White Card Centered on #F6FBF7 Background */}
-            <View style={styles.externalFooter}>
-              <View style={styles.footerNote}>
-                <ShieldCheck size={16} color="#0D6832" />
-                <Text style={styles.footerText}>{t('auth.noPassword', language)}</Text>
-              </View>
+            {/* Footer */}
+            {!keyboardVisible && (
+              <View style={styles.externalFooter}>
+                <View style={styles.footerNote}>
+                  <ShieldCheck size={15} color="#0D6832" />
+                  <Text style={styles.footerText}>{t('auth.noPassword', language)}</Text>
+                </View>
 
-              <Text style={styles.termsText}>{t('auth.termsText', language)}</Text>
-            </View>
+                <Text style={styles.termsText}>{t('auth.termsText', language)}</Text>
+              </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -372,94 +420,101 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F6FBF7',
   },
+  mainWrapper: {
+    flex: 1,
+  },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 28 : 60,
-    paddingBottom: 40,
+    paddingTop: 8,
+    paddingBottom: 16,
+    justifyContent: 'space-between',
+  },
+  scrollContentKeyboard: {
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  topBarKeyboard: {
+    marginBottom: 4,
   },
   langBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    gap: 5,
   },
   langBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0D6832',
   },
   skipBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
   skipBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textSecondary,
   },
   brandHeader: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 10,
+  },
+  brandHeaderKeyboard: {
+    marginBottom: 6,
+    gap: 6,
   },
   logoBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: '#EDE9FE',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  boxEmoji: {
-    fontSize: 42,
-    fontWeight: 'normal',
-    includeFontPadding: false,
-    lineHeight: 52,
-    paddingHorizontal: 6,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  logoBadgeKeyboard: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    marginBottom: 2,
   },
   brandTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0D6832',
   },
-  titleEmoji: {
-    fontSize: 28,
-    fontWeight: 'normal',
-    includeFontPadding: false,
-    lineHeight: 36,
-    paddingHorizontal: 6,
+  brandTitleKeyboard: {
+    fontSize: 20,
   },
   brandSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: THEME.colors.textSecondary,
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
   },
   cardContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 4,
+    padding: 24,
     borderWidth: 1,
     borderColor: '#E2E8DE',
+  },
+  cardContainerKeyboard: {
+    padding: 18,
+    borderRadius: 22,
   },
   cardTitle: {
     fontSize: 22,
@@ -491,7 +546,7 @@ const styles = StyleSheet.create({
   },
   tabBtnActive: {
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 3,
+    borderBottomWidth: 2.5,
     borderBottomColor: '#0D6832',
   },
   tabBtnText: {
@@ -506,7 +561,7 @@ const styles = StyleSheet.create({
   soonPill: {
     backgroundColor: '#FEF3C7',
     paddingVertical: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     borderRadius: 6,
     marginLeft: 4,
   },
@@ -520,7 +575,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
     marginBottom: 6,
@@ -534,7 +589,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
     borderRadius: 14,
     paddingHorizontal: 14,
-    height: 54,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -550,9 +605,7 @@ const styles = StyleSheet.create({
     borderColor: '#DDE3D6',
     borderRadius: 14,
     paddingHorizontal: 14,
-    height: 54,
-    paddingVertical: 0,
-    includeFontPadding: false,
+    height: 52,
     fontSize: 15,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
@@ -565,17 +618,17 @@ const styles = StyleSheet.create({
     borderColor: '#DDE3D6',
     borderRadius: 14,
     paddingHorizontal: 14,
-    height: 54,
+    height: 52,
   },
   errorBox: {
     backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   infoBox: {
@@ -584,32 +637,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7',
     borderWidth: 1,
     borderColor: '#FDE68A',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   infoText: {
     flex: 1,
     color: '#B45309',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    lineHeight: 17,
+    lineHeight: 15,
   },
   content: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   textInput: {
     flex: 1,
-    height: 54,
-    paddingVertical: 0,
-    includeFontPadding: false,
+    height: 52,
     fontSize: 15,
     color: THEME.colors.textPrimary,
   },
   otpInput: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 6,
+    letterSpacing: 4,
   },
   primaryButton: {
     backgroundColor: '#0D6832',
@@ -618,7 +669,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 8,
   },
   buttonPressed: {
     backgroundColor: THEME.colors.primaryDark,
@@ -629,40 +680,40 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   backBtn: {
     alignSelf: 'center',
-    marginTop: 12,
-    padding: 6,
+    marginTop: 10,
+    padding: 4,
   },
   backBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#0D6832',
     fontWeight: '600',
   },
   externalFooter: {
-    marginTop: 28,
+    marginTop: 10,
     alignItems: 'center',
   },
   footerNote: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    gap: 6,
+    marginBottom: 4,
+    gap: 5,
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.colors.textSecondary,
     fontWeight: '600',
   },
   termsText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 16,
+    lineHeight: 14,
+    paddingHorizontal: 12,
   },
 });

@@ -30,6 +30,7 @@ import {
   Settings,
   Edit3,
   BookOpen,
+  Sprout,
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Location from 'expo-location';
@@ -62,8 +63,10 @@ function getWeatherConditionText(code: number): string {
   return 'Partly Cloudy';
 }
 
-function formatDisplayName(name?: string): string {
-  if (!name || !name.trim()) return 'Paramjeet';
+function formatDisplayName(name?: string, language: AppLanguage = 'en'): string {
+  if (!name || !name.trim() || name.toLowerCase() === 'farmer') {
+    return language === 'hi' ? 'आगंतुक' : 'Visitor';
+  }
   let clean = name.trim();
   if (clean.includes('@')) {
     clean = clean.split('@')[0];
@@ -171,10 +174,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     fetchDashboardData();
   }, []);
 
-  // Compute full target greeting with formatted user first name
-  const userFirstName = formatDisplayName(
-    homeContext?.first_name || (profile?.full_name ? profile.full_name : 'Paramjeet')
-  );
+  // Compute full target greeting with formatted user first name or 'Visitor' when guest
+  const userFirstName = profile && (profile.full_name || profile.name)
+    ? formatDisplayName(profile.full_name || profile.name, language)
+    : (language === 'hi' ? 'आगंतुक' : 'Visitor');
 
   const fullGreetingText = getGreeting({
     firstName: userFirstName,
@@ -184,31 +187,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     language,
   });
 
-  // Typewriter Animation Effect (runs ONCE per session)
+  // Set full greeting immediately without typewriter wobble/bobble
   useEffect(() => {
-    if (!fullGreetingText) return;
-
-    if (hasAnimatedGreetingThisSession) {
+    if (fullGreetingText) {
       setDisplayedGreeting(fullGreetingText);
-      setIsTyping(false);
-      return;
     }
-
-    hasAnimatedGreetingThisSession = true;
-    setIsTyping(true);
-    let index = 0;
-
-    const timer = setInterval(() => {
-      index += 1;
-      setDisplayedGreeting(fullGreetingText.slice(0, index));
-
-      if (index >= fullGreetingText.length) {
-        clearInterval(timer);
-        setIsTyping(false);
-      }
-    }, 45);
-
-    return () => clearInterval(timer);
   }, [fullGreetingText]);
 
   // Initial Signup / Saved Location initialization & Weather Fetch
@@ -341,13 +324,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* 1. Header with App Branding, Typewriter Greeting & Anti-Clipped Flower Emoji */}
+        {/* 1. Header with App Branding & Typewriter Greeting */}
         <View style={styles.topHeader}>
           <View style={{ flex: 1, marginRight: 12 }}>
             {/* App Name & Logo Branding Bar */}
             <View style={styles.brandRow}>
               <View style={[styles.brandLogoBox, { backgroundColor: colors.accentBg }]}>
-                <Text style={styles.brandLogoEmoji}>🪻</Text>
+                <Sprout size={20} color={colors.primary} />
               </View>
               <Text style={[styles.brandTitleText, { color: colors.primary }]}>
                 Plant Scientist
@@ -361,8 +344,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>
                 {displayedGreeting}
               </Text>
-              <Text style={styles.emojiGlyph}>🪻</Text>
-              {isTyping ? <Text style={styles.cursorText}>|</Text> : null}
             </View>
 
             {/* Clickable Location Button Underneath */}
@@ -379,7 +360,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onPress={() => Alert.alert('Notifications', 'No urgent weather or pest alerts for your district.')}
           >
             <Bell size={20} color={colors.textPrimary} />
-            <View style={styles.bellBadge} />
           </Pressable>
         </View>
 
@@ -834,9 +814,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   brandLogoBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
